@@ -1,0 +1,31 @@
+{
+  "$schema": "https://jsr.io/schema/config-file.v1.json",
+  "name": "@deft-plus/reactivity",
+  "version": "0.1.0",
+  "description": "🎯 Seamlessly manage reactive state with signals, enabling automatic updates and fine-grained reactivity across your application.",
+  "keywords": [
+    "deno",
+    "signal",
+    "store",
+    "reactive",
+    "reactivity",
+    "atomic",
+    "state",
+    "global"
+  ],
+  "license": "Apache-2.0",
+  "author": "Deft+",
+  "homepage": "https://github.com/deft-plus/reactivity#README.md",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/deft-plus/reactivity.git"
+  },
+  "imports": {
+    "@std/async": "jsr:@std/async@^1.0.6",
+    "@std/expect": "jsr:@std/expect@^1.0.5",
+    "@std/testing": "jsr:@std/testing@^1.0.3"
+  },
+  "exports": {
+    ".": "./mod.ts"
+  }
+}

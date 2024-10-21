@@ -3,16 +3,7 @@
   "name": "@deft-plus/reactivity",
   "version": "0.1.0",
   "description": "🎯 Seamlessly manage reactive state with signals, enabling automatic updates and fine-grained reactivity across your application.",
-  "keywords": [
-    "deno",
-    "signal",
-    "store",
-    "reactive",
-    "reactivity",
-    "atomic",
-    "state",
-    "global"
-  ],
+  "keywords": ["deno", "signal", "store", "reactive", "reactivity", "atomic", "state", "global"],
   "license": "Apache-2.0",
   "author": "Deft+",
   "homepage": "https://github.com/deft-plus/reactivity#README.md",

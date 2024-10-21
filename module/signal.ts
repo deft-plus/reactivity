@@ -52,9 +52,9 @@ import {
   type ReadonlySignal,
   type SignalOptions,
   type WritableSignal,
-} from "./_api.ts";
-import { ReactiveNode } from "./_reactive_node.ts";
-import { untrackedSignal } from "./untracked.ts";
+} from './_api.ts';
+import { ReactiveNode } from './_reactive_node.ts';
+import { untrackedSignal } from './untracked.ts';
 
 /**
  * Create a signal that can be set or updated directly.
@@ -119,7 +119,7 @@ export function signal<T>(
     onChange,
   });
 
-  return markAsSignal("writable", node.signal.bind(node), {
+  return markAsSignal('writable', node.signal.bind(node), {
     set: node.set.bind(node),
     update: node.update.bind(node),
     mutate: node.mutate.bind(node),
@@ -197,7 +197,7 @@ class WritableSignalImpl<T> extends ReactiveNode {
   public readonly(): ReadonlySignal<T> {
     if (!this.readonlySignal) {
       this.readonlySignal = markAsSignal<ReadonlySignal<T>>(
-        "readonly",
+        'readonly',
         () => this.signal(),
         {
           untracked: () => this.untracked(),

@@ -27,27 +27,27 @@ import {
   markAsSignal,
   type MemoizedSignal,
   type MemoizedSignalOptions,
-} from "./_api.ts";
-import { ReactiveNode } from "./_reactive_node.ts";
-import { untrackedSignal } from "./untracked.ts";
+} from './_api.ts';
+import { ReactiveNode } from './_reactive_node.ts';
+import { untrackedSignal } from './untracked.ts';
 
 /**
  * Symbol for a memoized value that hasn't been computed yet.
  * @internal
  */
-const UNSET = Symbol("UNSET");
+const UNSET = Symbol('UNSET');
 
 /**
  * Symbol indicating a computation is in progress. Used to detect cycles.
  * @internal
  */
-const COMPUTING = Symbol("COMPUTING");
+const COMPUTING = Symbol('COMPUTING');
 
 /**
  * Symbol indicating a computation failed. The error is cached until the value is recomputed.
  * @internal
  */
-const ERRORED = Symbol("ERRORED");
+const ERRORED = Symbol('ERRORED');
 
 /**
  * Creates a memoized signal that computes the value and caches it until dependencies change.
@@ -83,7 +83,7 @@ export function memoSignal<T>(
 
   const node = new MemoizedSignalImp(compute, { id, log, equal, onChange });
 
-  return markAsSignal("memoized", node.signal.bind(node), {
+  return markAsSignal('memoized', node.signal.bind(node), {
     untracked: node.untracked.bind(node),
     toString: node.toString.bind(node),
   });
@@ -177,7 +177,7 @@ class MemoizedSignalImp<T> extends ReactiveNode {
   /** Recomputes the value if needed. */
   private recomputeValue(): void {
     if (this.value === COMPUTING) {
-      throw new Error("Cycle detected in computations."); // Prevent infinite loops.
+      throw new Error('Cycle detected in computations.'); // Prevent infinite loops.
     }
 
     const previousValue = this.value;

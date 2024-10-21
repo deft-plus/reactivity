@@ -1,0 +1,10 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# Deno
+deno.lock
+.coverage
+.deno-docs
+
+# misc
+.DS_Store
+*.pem

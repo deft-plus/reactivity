@@ -1,7 +1,7 @@
 ---
 title: Signals
 description: Reactive values that automatically notify consumers when their value changes, enabling fine-grained reactivity and lazy evaluation.
-url: /reactivity/signals/convertion
+url: /reactivity/to-signal
 ---
 
 # Signal Conversion

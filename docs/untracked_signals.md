@@ -1,7 +1,7 @@
 ---
 title: Signals
 description: Reactive values that automatically notify consumers when their value changes, enabling fine-grained reactivity and lazy evaluation.
-url: /reactivity/signals/untracked
+url: /reactivity/untracked-signals
 ---
 
 # Untracked Signals

@@ -5,12 +5,12 @@ import { expect } from '@std/expect';
 
 import { delay } from '@std/async';
 
-import { signalFromPromise } from './promise.ts';
+import { toSignal } from './to_signal.ts';
 
-group('reactive / signalFromPromise()', () => {
+group('reactive / toSignal()', () => {
   test('should create a signal from a promise function', async () => {
-    const promise1 = signalFromPromise(() => delay(10).then(() => 'Hello, World!'));
-    const promise2 = signalFromPromise(delay(10).then(() => 'Hello, World!'));
+    const promise1 = toSignal(() => delay(10).then(() => 'Hello, World!'));
+    const promise2 = toSignal(delay(10).then(() => 'Hello, World!'));
 
     expect(promise1()).toStrictEqual({ status: 'pending' });
     expect(promise2()).toStrictEqual({ status: 'pending' });
@@ -22,7 +22,7 @@ group('reactive / signalFromPromise()', () => {
   });
 
   test('should return errors rejected by the promise', async () => {
-    const promise = signalFromPromise(() => delay(10).then(() => Promise.reject('Error!')));
+    const promise = toSignal(() => delay(10).then(() => Promise.reject('Error!')));
 
     expect(promise()).toStrictEqual({ status: 'pending' });
 

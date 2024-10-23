@@ -74,23 +74,23 @@ const isEven = memoSignal(() => counter() % 2 === 0);
 
 Memoized signals can be configured with an equality comparator to prevent unnecessary updates and an `onChange` callback to run when the value changes.
 
-### Promised Signals
+### Signal Conversion
 
-`signalFromPromise()` creates signals that represent asynchronous values. The signal resolves to a promise and exposes a `status` property.
+`toSignal()` creates signals that represent asynchronous values. The signal resolves to a promise and exposes a `status` property.
 
 Example:
 
 ```typescript
-import { signalFromPromise } from '@deft-plus/reactivity';
+import { toSignal } from '@deft-plus/reactivity';
 
 // Function parameter.
-const data = signalFromPromise(async () => {
+const data = toSignal(async () => {
   const response = await fetch('https://api.example.com/data');
   return response.json();
 });
 
 // Promise parameter.
-const data = signalFromPromise(
+const data = toSignal(
   fetch('https://api.example.com/data')
     .then((response) => response.json()),
 );

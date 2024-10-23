@@ -51,6 +51,27 @@ group('reactive / effect()', () => {
     expect(changes).toEqual([1]);
   });
 
+  test('should stop an effect when out of scope', async () => {
+    const value = signal(0);
+    const changes: number[] = [];
+
+    {
+      using _effectRef = effect(() => {
+        changes.push(value());
+      });
+
+      expect(changes).toEqual([]);
+
+      value.set(1);
+      await delay(1);
+      expect(changes).toEqual([1]);
+    }
+
+    value.set(2);
+    await delay(1);
+    expect(changes).toEqual([1]);
+  });
+
   test('should allow to use the `initial` method to run the effect immediately', async () => {
     const value = signal(0);
     const changes = [] as number[];

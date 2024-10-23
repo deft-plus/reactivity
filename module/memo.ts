@@ -75,13 +75,13 @@ export function memoSignal<T>(
   options?: MemoizedSignalOptions<T>,
 ): MemoizedSignal<T> {
   const {
-    id = `unnamed_signal_${Math.random().toString(36).slice(2)}`,
+    name = `unnamed_signal_${Math.random().toString(36).slice(2)}`,
     log = false,
     equal = defaultEquals,
-    onChange = () => {},
+    subscribe = () => {},
   } = options ?? {};
 
-  const node = new MemoizedSignalImp(compute, { id, log, equal, onChange });
+  const node = new MemoizedSignalImp(compute, { name, log, equal, subscribe });
 
   return markAsSignal('memoized', node.signal.bind(node), {
     untracked: node.untracked.bind(node),
@@ -209,9 +209,10 @@ class MemoizedSignalImp<T> extends ReactiveNode {
       return;
     }
 
+    const oldValue = this.value;
     this.value = newValue;
     this.valueVersion++;
-    this.options.onChange(this.value as T);
+    this.options.subscribe(this.value as T, oldValue as T);
   }
 }
 

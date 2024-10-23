@@ -17,6 +17,6 @@ export {
   type EffectRef,
 } from './effect.ts';
 export { memoSignal } from './memo.ts';
-export { type PromiseValue, signalFromPromise } from './promise.ts';
+export { type PromiseValue, toSignal } from './to_signal.ts';
 export { signal } from './signal.ts';
 export { type Store, store, type StoreValues, type ValidStore } from './store.ts';

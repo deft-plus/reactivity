@@ -43,13 +43,35 @@
  * counter.set(1); // No log.
  * ```
  *
+ * @example Usage with events
+ * ```ts
+ * {
+ *   using counter = signal(0, {
+ *     allowEvents: true,
+ *     onDispose: () => console.log('Cleanup logic'), // Cleanup logic.
+ *   });
+ *
+ *   console.log(counter()); // Logs: "0".
+ *
+ *   counter.set(1);
+ *
+ *   console.log(counter()); // Logs: "1".
+ *
+ *   dispatchEvent(new CustomEvent(counter.identifier, { detail: 2 }));
+ *
+ *   console.log(counter()); // Logs: "2".
+ * } // Logs: "Cleanup logic".
+ * ```
+ *
  * @module
  */
 
+import type { WritableEventSignal } from './_api.ts';
 import {
   defaultEquals,
   markAsSignal,
   type ReadonlySignal,
+  type SignalEventOptions,
   type SignalOptions,
   type WritableSignal,
 } from './_api.ts';
@@ -103,29 +125,81 @@ import { untrackedSignal } from './untracked.ts';
  */
 export function signal<T>(
   initialValue: T,
-  options: SignalOptions<T> = {},
-): WritableSignal<T> {
+  options?: SignalOptions<T>,
+): WritableSignal<T>;
+
+/**
+ * Create a signal that can be set or updated directly and that receives events.
+ *
+ * @example Usage
+ * ```ts
+ * {
+ *   using counter = signal(0, {
+ *     allowEvents: true,
+ *     onDispose: () => console.log('Cleanup logic'), // Cleanup logic.
+ *   });
+ *
+ *   console.log(counter()); // Logs: "0".
+ *
+ *   counter.set(1);
+ *
+ *   console.log(counter()); // Logs: "1".
+ *
+ *   dispatchEvent(new CustomEvent(counter.identifier, { detail: 2 }));
+ *
+ *   console.log(counter()); // Logs: "2".
+ * } // Logs: "Cleanup logic".
+ * ```
+ *
+ * @template T - The type of the signal value.
+ * @param initialValue - The initial value of the signal.
+ * @param options - The options for the signal.
+ * @returns A writable signal.
+ */
+export function signal<T>(
+  initialValue: T,
+  options?: SignalEventOptions<T>,
+): WritableEventSignal<T>;
+
+/**
+ * Create a signal that can be set or updated directly.
+ *
+ * @template T - The type of the signal value.
+ * @param initialValue - The initial value of the signal.
+ * @param options - The options for the signal.
+ * @returns A writable signal.
+ */
+export function signal<T>(
+  initialValue: T,
+  options?: SignalEventOptions<T> | SignalOptions<T>,
+): WritableSignal<T> | WritableEventSignal<T> {
   const {
-    id = `signal_${Math.random().toString(36).slice(2)}`,
+    name = `signal_${Math.random().toString(36).slice(2)}`,
     log = false,
     equal = defaultEquals,
-    onChange = () => {},
-  } = options;
+    subscribe = () => {},
+    allowEvents = false as true,
+    onDispose = () => {},
+  } = (options ?? {}) as SignalEventOptions<T>;
 
   const node = new WritableSignalImpl(initialValue, {
-    id,
+    name,
     log,
     equal,
-    onChange,
+    subscribe,
+    allowEvents,
+    onDispose,
   });
 
   return markAsSignal('writable', node.signal.bind(node), {
+    identifier: name,
     set: node.set.bind(node),
     update: node.update.bind(node),
     mutate: node.mutate.bind(node),
     readonly: node.readonly.bind(node),
     untracked: node.untracked.bind(node),
     toString: node.toString.bind(node),
+    [Symbol.dispose]: node.dispose.bind(node),
   });
 }
 
@@ -136,10 +210,18 @@ export function signal<T>(
 class WritableSignalImpl<T> extends ReactiveNode {
   constructor(
     private value: T,
-    private options: Required<SignalOptions<T>>,
+    private options: Required<SignalEventOptions<T>>,
   ) {
     super();
+    if (this.options.allowEvents) {
+      this.listener = (event) => this.set((event as CustomEvent).detail);
+
+      addEventListener(options.name, this.listener);
+    }
   }
+
+  /** Listener for events if allowed. */
+  private listener: ((event: Event) => void) | null = null;
 
   /** The current value of the signal as read-only. */
   private readonlySignal?: ReadonlySignal<T>;
@@ -161,10 +243,11 @@ class WritableSignalImpl<T> extends ReactiveNode {
    */
   public set(newValue: T): void {
     if (!this.options.equal(this.value, newValue)) {
+      const oldValue = this.value;
       this.value = newValue;
       this.valueVersion++;
       this.notifyConsumers();
-      this.options.onChange?.(this.value);
+      this.options.subscribe?.(this.value, oldValue);
     }
   }
 
@@ -183,10 +266,11 @@ class WritableSignalImpl<T> extends ReactiveNode {
    * @param mutator - The function to mutate the value.
    */
   public mutate(mutator: (value: T) => void): void {
+    const oldValue = this.value;
     mutator(this.value);
     this.valueVersion++;
     this.notifyConsumers();
-    this.options.onChange?.(this.value);
+    this.options.subscribe?.(this.value, oldValue);
   }
 
   /**
@@ -234,5 +318,14 @@ class WritableSignalImpl<T> extends ReactiveNode {
    */
   public override toString(): string {
     return `[Signal: ${JSON.stringify(this.signal())}]`;
+  }
+
+  /** Dispose of the signal and remove any event listeners. */
+  public dispose(): void {
+    if (this.options.allowEvents && this.listener) {
+      this.options.onDispose?.();
+
+      removeEventListener(this.options.name, this.listener);
+    }
   }
 }

@@ -77,9 +77,9 @@ group('reactive / memoSignal()', () => {
     const doubleCounter = memoSignal(
       () => counter() * 2,
       {
-        id: 'doubleCounter',
+        name: 'doubleCounter',
         log: true,
-        onChange: (value) => {
+        subscribe: (value) => {
           called.push(value);
         },
       },

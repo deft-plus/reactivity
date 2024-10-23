@@ -59,10 +59,10 @@ group('reactive / store()', () => {
       name: 'Counter',
       count: {
         value: 0,
-        id: 'count',
+        name: 'count',
         log: true,
         equal: (a, b) => a === b,
-        onChange: (value) => changes.push(value),
+        subscribe: (value) => changes.push(value),
       },
       increment: () => get().count.update((count) => count + 1),
       decrement: () => get().count.update((count) => count - 1),
@@ -134,7 +134,7 @@ group('reactive / store()', () => {
 
     type AuthStore = {
       user: User | null;
-      uid: () => string | null;
+      uid: string | null;
       signUp: (username: string, password: string) => Promise<User>;
       signIn: (username: string, password: string) => Promise<User | null>;
       signOut: () => Promise<boolean>;
@@ -142,7 +142,9 @@ group('reactive / store()', () => {
 
     const authenticationStore = store<AuthStore>(({ get }) => ({
       user: null,
-      uid: () => get().user()?.uid ?? null, // uid is a derived value from user.
+      uid: {
+        value: () => get().user()?.uid ?? null, // uid is a derived value from user.
+      },
       signIn: async (username, password) => {
         const userSignedIn = await UserService.read(username);
         if (userSignedIn?.password !== password) {

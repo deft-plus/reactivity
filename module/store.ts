@@ -120,10 +120,10 @@ export function store<T extends ValidStore>(initializeStoreValues: StoreValues<T
     const isComputed = typeof signalValue === 'function';
 
     const signalConfig = {
-      ...(isConfigured && stateValue.id && { id: stateValue.id }),
+      ...(isConfigured && stateValue.name && { name: stateValue.name }),
       ...(isConfigured && stateValue.log && { log: stateValue.log }),
       ...(isConfigured && stateValue.equal && { equal: stateValue.equal }),
-      ...(isConfigured && stateValue.onChange && { onChange: stateValue.onChange }),
+      ...(isConfigured && stateValue.subscribe && { subscribe: stateValue.subscribe }),
     } as SignalOptions<T>;
 
     // Value assignment to a memoized or normal signal.

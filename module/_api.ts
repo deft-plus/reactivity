@@ -178,6 +178,8 @@ export interface ReadonlySignal<T = unknown> extends WithSignalSymbol<T> {
  * @template T - The type of the value returned by the signal.
  */
 export interface WritableSignal<T = unknown> extends ReadonlySignal<T> {
+  /** Named of the signal (Useful when the name is not set). */
+  identifier: string;
   /**
    * Set a new value and notify dependents.
    *
@@ -205,6 +207,16 @@ export interface WritableSignal<T = unknown> extends ReadonlySignal<T> {
 }
 
 /**
+ * A writable signal that can be disposed of.
+ *
+ * @template T - The type of the value returned by the signal.
+ */
+export interface WritableEventSignal<T = unknown> extends WritableSignal<T> {
+  /** Dispose of the signal and clean up all event listeners. */
+  [Symbol.dispose]: () => void;
+}
+
+/**
  * A memoized signal that computes the value based on dependencies.
  *
  * @template T - The type of the value returned by the signal.
@@ -225,13 +237,9 @@ export type Signal<T = unknown> = ReadonlySignal<T> | WritableSignal<T> | Memoiz
  * @template T - The type of the value returned by the signal.
  */
 export interface SignalOptions<T> {
-  /**
-   * Identifier for the signal. Useful for debugging and testing.
-   */
-  id?: string;
-  /**
-   * Whether to log the signal's changes. Defaults to `false`.
-   */
+  /** Identifier for the signal. Useful for debugging, update with events and testing. */
+  name?: string;
+  /** Whether to log the signal's changes. Defaults to `false`. */
   log?: boolean;
   /**
    * Function to check if two signal values are equal. Defaults to the built-in equality check
@@ -247,7 +255,19 @@ export interface SignalOptions<T> {
    *
    * @param newValue - New value of the signal.
    */
-  onChange?: (newValue: T) => void;
+  subscribe?: (newValue: T, oldValue: T) => void;
+}
+
+/**
+ * Options for creating a signal that can listen for events.
+ *
+ * @template T - The type of the value returned by the signal.
+ */
+export interface SignalEventOptions<T> extends SignalOptions<T> {
+  /** Whether to allow events to be dispatched (Defaults to `false`). */
+  allowEvents: true;
+  /** Function to call when the signal is disposed. */
+  onDispose?: () => void;
 }
 
 /**

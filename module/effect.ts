@@ -29,6 +29,18 @@
  * effectRef.destroy();
  * ```
  *
+ * @example Usage with dispose
+ * ```ts
+ * {
+ *   // Run the effect one initial time and then re-schedule it on changes.
+ *   using effectRef = effect(() => {
+ *     console.log('Signal changed and run first time:', signal());
+ *
+ *     return () => console.log('Effect disposed');
+ *   });
+ * } // Logs: "Effect disposed".
+ * ```
+ *
  * @module
  */
 
@@ -151,7 +163,12 @@ class EffectImpl extends ReactiveNode {
       EffectImpl.executionQueue.delete(this);
     };
 
-    return { destroy };
+    return {
+      destroy,
+      [Symbol.dispose]: () => {
+        destroy();
+      },
+    };
   }
 
   /** Notify that this watch needs to be re-scheduled. */
@@ -226,6 +243,8 @@ export type EffectCallback = () => void | EffectCleanup;
 export interface EffectRef {
   /** Stop the effect and remove it from execution. */
   destroy: () => void;
+  /** Dispose of the effect and clean up all event listeners. */
+  [Symbol.dispose]: () => void;
 }
 
 /**

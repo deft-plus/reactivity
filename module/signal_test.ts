@@ -20,7 +20,7 @@ group('reactive / signal()', () => {
   });
 
   test('should create a signal with the given options', () => {
-    const counter = signal(0, { id: 'counter', log: true });
+    const counter = signal(0, { name: 'counter', log: true });
 
     expect(counter()).toBe(0);
   });
@@ -42,21 +42,21 @@ group('reactive / signal()', () => {
   });
 
   test('should allow to mutate a signal value', () => {
-    const counter = signal<TestingUser>({ name: 'Alice', age: 42 });
+    const user = signal<TestingUser>({ name: 'Alice', age: 42 });
 
-    counter.mutate((value) => {
+    user.mutate((value) => {
       value.name = 'Bob';
     });
 
-    expect(counter().name).toBe('Bob');
+    expect(user().name).toBe('Bob');
   });
 
   test('should create a readonly signal', () => {
-    const counter = signal(0).readonly();
+    const value = signal(0).readonly();
 
-    expect(counter()).toBe(0);
+    expect(value()).toBe(0);
 
-    const signalFnKeys = Object.keys(counter);
+    const signalFnKeys = Object.keys(value);
     const writableKeys = signalFnKeys.find((key) =>
       key === 'set' || key === 'update' || key === 'mutate'
     );
@@ -82,11 +82,9 @@ group('reactive / signal()', () => {
     expect(writableKeys).toBe(undefined);
 
     privateCounter.set(1);
-
     expect(counter.readonly()).toBe(1);
 
     counter.mutable.set(2);
-
     expect(counter.readonly()).toBe(2);
   });
 
@@ -94,7 +92,7 @@ group('reactive / signal()', () => {
     const called = [] as number[];
 
     const counter = signal(0, {
-      onChange: (value) => called.push(value),
+      subscribe: (value) => called.push(value),
     });
 
     expect(called).toStrictEqual([]);
@@ -158,6 +156,39 @@ group('reactive / signal()', () => {
     counter.set(2);
 
     expect(changes).toStrictEqual([]);
+  });
+
+  test('should allow to update values using events', () => {
+    using counter = signal(0, { allowEvents: true });
+
+    expect(counter()).toBe(0);
+
+    dispatchEvent(new CustomEvent(counter.identifier, { detail: 1 }));
+
+    expect(counter()).toBe(1);
+  });
+
+  test('should clean up listener after signal is out of scope', () => {
+    const changes: number[] = [];
+
+    {
+      using counter = signal(0, {
+        name: 'counter_test_2',
+        allowEvents: true,
+        subscribe: (value) => changes.push(value),
+      });
+
+      expect(changes).toStrictEqual([]);
+      expect(counter()).toBe(0);
+
+      dispatchEvent(new CustomEvent('counter_test_2', { detail: 1 }));
+
+      expect(changes).toStrictEqual([1]);
+      expect(counter()).toBe(1);
+    }
+
+    dispatchEvent(new CustomEvent('counter_test_2', { detail: 2 }));
+    expect(changes).toStrictEqual([1]);
   });
 
   test('should have a toString implementation', () => {

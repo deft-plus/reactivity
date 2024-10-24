@@ -1,6 +1,7 @@
 // Copyright the Deft+ authors. All rights reserved. Apache-2.0 license
 
 import { describe as group, test } from '@std/testing/bdd';
+import { assertSpyCalls, stub } from '@std/testing/mock';
 import { expect } from '@std/expect';
 
 import { delay } from '@std/async/delay';
@@ -53,6 +54,7 @@ group('reactive / store()', () => {
   });
 
   test('should allow to configure signals', () => {
+    using consoleStub = stub(console, 'log', (_) => {});
     const changes: number[] = [];
 
     const configuredCounterStore = store<CounterStore>(({ get }) => ({
@@ -77,6 +79,7 @@ group('reactive / store()', () => {
     counter.increment();
 
     expect(changes).toStrictEqual([1, 2, 3]);
+    assertSpyCalls(consoleStub, 9); // 9 calls since each log is called 3 times.
   });
 
   test('should allow using the selector to access specific store values and actions', () => {

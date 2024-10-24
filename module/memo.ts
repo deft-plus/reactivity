@@ -75,8 +75,8 @@ export function memoSignal<T>(
   options?: MemoizedSignalOptions<T>,
 ): MemoizedSignal<T> {
   const {
-    name = `unnamed_signal_${Math.random().toString(36).slice(2)}`,
-    log = false,
+    name = `memo_signal_${Math.random().toString(36).slice(2)}`,
+    log = Deno.env.get('SIGNAL_LOG') === 'true',
     equal = defaultEquals,
     subscribe = () => {},
   } = options ?? {};
@@ -165,15 +165,6 @@ class MemoizedSignalImp<T> extends ReactiveNode {
     return this.value as T;
   }
 
-  /**
-   * Used to show the signal in console logs easily.
-   *
-   * @returns A string representation of the signal.
-   */
-  public override toString(): string {
-    return `[MemoSignal: ${JSON.stringify(this.signal())}]`;
-  }
-
   /** Recomputes the value if needed. */
   private recomputeValue(): void {
     if (this.value === COMPUTING) {
@@ -212,7 +203,26 @@ class MemoizedSignalImp<T> extends ReactiveNode {
     const oldValue = this.value;
     this.value = newValue;
     this.valueVersion++;
+
+    if (this.options.log) {
+      super.log({
+        type: 'MemoSignal',
+        name: this.options.name,
+        newValue: this.value,
+        oldValue,
+      });
+    }
+
     this.options.subscribe(this.value as T, oldValue as T);
+  }
+
+  /**
+   * Used to show the signal in console logs easily.
+   *
+   * @returns A string representation of the signal.
+   */
+  public override toString(): string {
+    return `[MemoSignal: ${JSON.stringify(this.signal())}]`;
   }
 }
 

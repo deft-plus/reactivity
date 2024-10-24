@@ -1,6 +1,7 @@
 // Copyright the Deft+ authors. All rights reserved. Apache-2.0 license
 
 import { describe as group, test } from '@std/testing/bdd';
+import { assertSpyCalls, stub } from '@std/testing/mock';
 import { expect } from '@std/expect';
 
 import type { WritableSignal } from './_api.ts';
@@ -88,7 +89,7 @@ group('reactive / signal()', () => {
     expect(counter.readonly()).toBe(2);
   });
 
-  test('should allow to use `onChange` hook', () => {
+  test('should allow to use `subscribe` hook', () => {
     const called = [] as number[];
 
     const counter = signal(0, {
@@ -189,6 +190,26 @@ group('reactive / signal()', () => {
 
     dispatchEvent(new CustomEvent('counter_test_2', { detail: 2 }));
     expect(changes).toStrictEqual([1]);
+  });
+
+  test('should create a new identifier for a readonly signal', () => {
+    const counter = signal(0, { name: 'counter' });
+    const readonlyCounter = counter.readonly();
+
+    expect(counter.identifier).not.toBe(readonlyCounter.identifier);
+  });
+
+  test('should log changes', () => {
+    using consoleStub = stub(console, 'log', (_) => {});
+
+    const hello = signal({ hello: 'world' }, { name: 'hello', log: true });
+
+    hello.set({ hello: 'world set' });
+    hello.mutate((value) => {
+      value.hello = 'world mutate';
+    });
+
+    assertSpyCalls(consoleStub, 6); // 6 calls since each log is called 3 times.
   });
 
   test('should have a toString implementation', () => {

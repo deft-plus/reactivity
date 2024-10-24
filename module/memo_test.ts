@@ -1,6 +1,7 @@
 // Copyright the Deft+ authors. All rights reserved. Apache-2.0 license
 
 import { describe as group, test } from '@std/testing/bdd';
+import { assertSpyCalls, stub } from '@std/testing/mock';
 import { expect } from '@std/expect';
 
 import { delay } from '@std/async';
@@ -70,8 +71,9 @@ group('reactive / memoSignal()', () => {
   });
 
   test('should allow to pass a config object', () => {
-    const called = [] as number[];
+    using consoleStub = stub(console, 'log', (_) => {});
 
+    const called = [] as number[];
     const counter = signal(0);
 
     const doubleCounter = memoSignal(
@@ -100,6 +102,8 @@ group('reactive / memoSignal()', () => {
     counter.set(23);
     expect(doubleCounter()).toBe(46);
     expect(called).toStrictEqual([0, 2, 46]);
+
+    assertSpyCalls(consoleStub, 9); // 9 calls since each log is called 3 times.
   });
 
   test('should be able to keep track of multiple dependencies and batch changes', () => {

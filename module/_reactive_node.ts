@@ -146,10 +146,27 @@ export abstract class ReactiveNode {
     this.onProducerMayChanged();
     return this.valueVersion !== lastSeenVersion;
   }
+
+  /**
+   * Logs the change of value for debugging purposes.
+   *
+   * @param config - Configuration for logging the change.
+   */
+  protected log(config: LogConfig): void {
+    const { type, name, newValue, oldValue } = config;
+
+    // Rule disabled because this is a debugging method.
+    // deno-lint-ignore no-console
+    console.log(`[${type}: ${name}]`);
+    // deno-lint-ignore no-console
+    console.log(`  New value:`, JSON.stringify(newValue));
+    // deno-lint-ignore no-console
+    console.log(`  Old value:`, JSON.stringify(oldValue));
+  }
 }
 
 /** Representation of a dependency between a producer and a consumer. */
-type Dependency = {
+interface Dependency {
   /** Reference to the producer node. */
   readonly producerRef: WeakRef<ReactiveNode>;
   /** Reference to the consumer node. */
@@ -158,4 +175,12 @@ type Dependency = {
   consumerVersion: number;
   /** Version of the producer's value when this dependency was last accessed. */
   producerVersion: number;
-};
+}
+
+/** Configuration for logging changes in the reactive node. */
+interface LogConfig {
+  type: string;
+  name: string;
+  newValue: unknown;
+  oldValue: unknown;
+}

@@ -164,6 +164,8 @@ export interface WithSignalSymbol<T> extends BaseSignal<T> {
  * @template T - The type of the value returned by the signal.
  */
 export interface ReadonlySignal<T = unknown> extends WithSignalSymbol<T> {
+  /** Named of the signal (Useful when the name is not set). */
+  identifier: string;
   /**
    * Get the value without creating a dependency.
    *
@@ -178,8 +180,6 @@ export interface ReadonlySignal<T = unknown> extends WithSignalSymbol<T> {
  * @template T - The type of the value returned by the signal.
  */
 export interface WritableSignal<T = unknown> extends ReadonlySignal<T> {
-  /** Named of the signal (Useful when the name is not set). */
-  identifier: string;
   /**
    * Set a new value and notify dependents.
    *
@@ -239,11 +239,11 @@ export type Signal<T = unknown> = ReadonlySignal<T> | WritableSignal<T> | Memoiz
 export interface SignalOptions<T> {
   /** Identifier for the signal. Useful for debugging, update with events and testing. */
   name?: string;
-  /** Whether to log the signal's changes. Defaults to `false`. */
+  /** Whether to log the signal's changes (Defaults to `false`). */
   log?: boolean;
   /**
-   * Function to check if two signal values are equal. Defaults to the built-in equality check
-   * ({@link defaultEquals}).
+   * Function to check if two signal values are equal (Defaults to the built-in equality check
+   * {@link defaultEquals}).
    *
    * @param a - First value to compare.
    * @param b - Second value to compare.

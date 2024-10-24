@@ -175,7 +175,7 @@ export function signal<T>(
 ): WritableSignal<T> | WritableEventSignal<T> {
   const {
     name = `signal_${Math.random().toString(36).slice(2)}`,
-    log = false,
+    log = Deno.env.get('SIGNAL_LOG') === 'true',
     equal = defaultEquals,
     subscribe = () => {},
     allowEvents = false as true,
@@ -247,6 +247,16 @@ class WritableSignalImpl<T> extends ReactiveNode {
       this.value = newValue;
       this.valueVersion++;
       this.notifyConsumers();
+
+      if (this.options.log) {
+        super.log({
+          type: 'Signal',
+          name: this.options.name,
+          newValue: this.value,
+          oldValue,
+        });
+      }
+
       this.options.subscribe?.(this.value, oldValue);
     }
   }
@@ -270,6 +280,16 @@ class WritableSignalImpl<T> extends ReactiveNode {
     mutator(this.value);
     this.valueVersion++;
     this.notifyConsumers();
+
+    if (this.options.log) {
+      super.log({
+        type: 'Signal',
+        name: this.options.name,
+        newValue: this.value,
+        oldValue,
+      });
+    }
+
     this.options.subscribe?.(this.value, oldValue);
   }
 
@@ -284,6 +304,7 @@ class WritableSignalImpl<T> extends ReactiveNode {
         'readonly',
         () => this.signal(),
         {
+          identifier: `${this.options.name}_readonly_${Math.random().toString(36).slice(2)}`,
           untracked: () => this.untracked(),
         },
       );
@@ -311,15 +332,6 @@ class WritableSignalImpl<T> extends ReactiveNode {
     return this.value;
   }
 
-  /**
-   * Used to show the signal in console logs easily.
-   *
-   * @returns A string representation of the signal.
-   */
-  public override toString(): string {
-    return `[Signal: ${JSON.stringify(this.signal())}]`;
-  }
-
   /** Dispose of the signal and remove any event listeners. */
   public dispose(): void {
     if (this.options.allowEvents && this.listener) {
@@ -327,5 +339,14 @@ class WritableSignalImpl<T> extends ReactiveNode {
 
       removeEventListener(this.options.name, this.listener);
     }
+  }
+
+  /**
+   * Used to show the signal in console logs easily.
+   *
+   * @returns A string representation of the signal.
+   */
+  public override toString(): string {
+    return `[Signal: ${JSON.stringify(this.signal())}]`;
   }
 }

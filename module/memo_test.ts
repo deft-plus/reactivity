@@ -73,7 +73,8 @@ group('reactive / memoSignal()', () => {
   test('should allow to pass a config object', () => {
     using consoleStub = stub(console, 'log', (_) => {});
 
-    const called = [] as number[];
+    const newCalled = [] as number[];
+    const oldCalled = [] as number[];
     const counter = signal(0);
 
     const doubleCounter = memoSignal(
@@ -81,27 +82,32 @@ group('reactive / memoSignal()', () => {
       {
         name: 'doubleCounter',
         log: true,
-        subscribe: (value) => {
-          called.push(value);
+        subscribe: (newValue, oldValue) => {
+          newCalled.push(newValue);
+          oldCalled.push(oldValue);
         },
       },
     );
 
     expect(doubleCounter()).toBe(0);
 
-    expect(called).toStrictEqual([0]);
+    expect(newCalled).toStrictEqual([0]);
+    expect(oldCalled).toStrictEqual([undefined]);
 
     counter.set(1);
     expect(doubleCounter()).toBe(2);
-    expect(called).toStrictEqual([0, 2]);
+    expect(newCalled).toStrictEqual([0, 2]);
+    expect(oldCalled).toStrictEqual([undefined, 0]);
 
     counter.set(23);
     expect(doubleCounter()).toBe(46);
-    expect(called).toStrictEqual([0, 2, 46]);
+    expect(newCalled).toStrictEqual([0, 2, 46]);
+    expect(oldCalled).toStrictEqual([undefined, 0, 2]);
 
     counter.set(23);
     expect(doubleCounter()).toBe(46);
-    expect(called).toStrictEqual([0, 2, 46]);
+    expect(newCalled).toStrictEqual([0, 2, 46]);
+    expect(oldCalled).toStrictEqual([undefined, 0, 2]);
 
     assertSpyCalls(consoleStub, 9); // 9 calls since each log is called 3 times.
   });

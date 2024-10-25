@@ -72,7 +72,7 @@ import { memoSignal } from '@deft-plus/reactivity';
 const isEven = memoSignal(() => counter() % 2 === 0);
 ```
 
-Memoized signals can be configured with an equality comparator to prevent unnecessary updates and an `onChange` callback to run when the value changes.
+Memoized signals can be configured with an equality comparator to prevent unnecessary updates and an `subscribe` hook to run when the value changes.
 
 ### Signal Conversion
 
@@ -94,6 +94,43 @@ const data = toSignal(
   fetch('https://api.example.com/data')
     .then((response) => response.json()),
 );
+```
+
+### Event Signals
+
+You can also use events to trigger signal updates. Just dispatch an event with the signal's name and the new value.
+
+Example:
+
+```typescript
+import { signal } from '@deft-plus/reactivity';
+
+using counter = signal(0, { name: 'counter', allowEvents: true });
+
+dispatchEvent(new CustomEvent('counter', { detail: 1 }));
+
+console.log(counter()); // 1
+```
+
+This allows you to update signals from event listeners, making it easy to integrate with other parts of your application. It also uses the Dispose pattern to clean up event listeners when the signal is disposed. You can also use the `onDispose` hook to run cleanup code when the signal is disposed.
+
+Example:
+
+```typescript
+import { signal } from '@deft-plus/reactivity';
+{
+  using counter = signal(0, {
+    name: 'counter',
+    allowEvents: true,
+    onDispose: () => {
+      console.log('Disposed');
+    },
+  });
+
+  dispatchEvent(new CustomEvent('counter', { detail: 1 }));
+
+  console.log(counter()); // 1
+} // Logs: "Disposed"
 ```
 
 ### Effects
@@ -120,7 +157,7 @@ effect.initial(() => {
 
 ### Untracked Signals
 
-Use `signal.untrack()` to access a signal's value without registering it as a dependency in a reactive context.
+Use `signal.untracked()` to access a signal's value without registering it as a dependency in a reactive context.
 
 ---
 

@@ -171,7 +171,7 @@ class MemoizedSignalImp<T> extends ReactiveNode {
       throw new Error('Cycle detected in computations.'); // Prevent infinite loops.
     }
 
-    const previousValue = this.value;
+    const oldValue = this.value;
     this.value = COMPUTING;
 
     this.trackingVersion++;
@@ -191,16 +191,15 @@ class MemoizedSignalImp<T> extends ReactiveNode {
 
     // Update value if there is a change.
     if (
-      previousValue !== UNSET &&
-      previousValue !== ERRORED &&
+      oldValue !== UNSET &&
+      oldValue !== ERRORED &&
       newValue !== ERRORED &&
-      this.options.equal(previousValue, newValue)
+      this.options.equal(oldValue, newValue)
     ) {
-      this.value = previousValue; // Keep old value if new value is equivalent.
+      this.value = oldValue; // Keep old value if new value is equivalent.
       return;
     }
 
-    const oldValue = this.value;
     this.value = newValue;
     this.valueVersion++;
 
@@ -213,7 +212,7 @@ class MemoizedSignalImp<T> extends ReactiveNode {
       });
     }
 
-    this.options.subscribe(this.value as T, oldValue as T);
+    this.options.subscribe(this.value as T, (oldValue === UNSET ? undefined : oldValue) as T);
   }
 
   /**

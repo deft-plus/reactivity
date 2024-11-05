@@ -1,0 +1,59 @@
+{
+  "tasks": {
+    "lint": "deno lint && deno fmt --check",
+    "fmt": "deno fmt",
+    "test": "rm -rf .coverage && deno test -A --coverage=.coverage **/*_test.ts ; deno coverage .coverage",
+    "test:u": "rm -rf .coverage && deno test -A --coverage=.coverage **/*_test.ts -- -u ; deno coverage .coverage",
+    "jsdoc:generate": "rm -rf .deno-docs && deno doc --html --output=./.deno-docs module/**/*.ts",
+    "jsdoc:lint": "deno doc --lint module/*.ts"
+  },
+  "workspace": ["./module", "./docs"],
+  "lock": false,
+  "compilerOptions": {
+    "lib": ["dom", "dom.iterable", "dom.extras", "deno.ns"],
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "noImplicitThis": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true
+  },
+  "fmt": {
+    "include": ["./"],
+    "exclude": [".git", ".coverage", ".deno-docs"],
+    "useTabs": false,
+    "lineWidth": 100,
+    "indentWidth": 2,
+    "singleQuote": true,
+    "proseWrap": "never"
+  },
+  "lint": {
+    "exclude": [".git", ".coverage", ".deno-docs"],
+    "rules": {
+      "tags": ["recommended"],
+      "include": [
+        "no-console",
+        "no-eval",
+        "eqeqeq",
+        "camelcase",
+        "no-self-compare",
+        "ban-untagged-todo",
+        "no-external-import",
+        "no-sparse-arrays",
+        "no-non-null-assertion",
+        "no-non-null-asserted-optional-chain",
+        "explicit-function-return-type",
+        "explicit-module-boundary-types",
+        "no-sync-fn-in-async-fn",
+        "single-var-declarator",
+        "verbatim-module-syntax",
+        "no-throw-literal",
+        "prefer-ascii"
+      ],
+      "exclude": ["no-empty-interface"]
+    }
+  }
+}

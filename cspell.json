@@ -1,0 +1,6 @@
+{
+  "version": "0.2",
+  "allowCompoundWords": true,
+  "ignorePaths": [".vscode", ".github/workflows"],
+  "words": ["deno", "lightningcss", "lume"]
+}

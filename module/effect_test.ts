@@ -126,9 +126,11 @@ Deno.test('effect() should skip execution when dependency values do not change',
 Deno.test('effect.resetEffects() should stop all active effects', async () => {
   const value = signal(0);
   const changes: number[] = [];
+  let cleanupCalls = 0;
 
-  effect(() => {
+  const effectRef = effect(() => {
     changes.push(value());
+    return () => cleanupCalls++;
   });
 
   expect(changes).toEqual([]);
@@ -138,6 +140,10 @@ Deno.test('effect.resetEffects() should stop all active effects', async () => {
   expect(changes).toEqual([1]);
 
   effect.resetEffects();
+  expect(cleanupCalls).toBe(1);
+
+  effectRef.destroy();
+  expect(cleanupCalls).toBe(1);
 
   value.set(2);
   await delay(1);

@@ -130,10 +130,14 @@ class EffectImpl extends ReactiveNode {
   /** Property to track the current tracking version. */
   private cleanupFn = NOOP_CLEANUP;
 
+  /** Whether this effect has already been destroyed. */
+  private destroyed = false;
+
   /** Stop all active effects. */
   public static resetEffects(): void {
-    EffectImpl.executionQueue.clear();
-    EffectImpl.activeEffects.clear();
+    for (const effect of EffectImpl.activeEffects) {
+      effect.destroy();
+    }
   }
 
   /** Called when a dependency may have changed. */
@@ -156,24 +160,24 @@ class EffectImpl extends ReactiveNode {
       this.notify();
     }
 
-    let destroyed = false;
-    const destroy = () => {
-      if (destroyed) {
-        return;
-      }
-
-      destroyed = true;
-      EffectImpl.activeEffects.delete(this);
-      EffectImpl.executionQueue.delete(this);
-      this.cleanup();
-    };
-
     return {
-      destroy,
+      destroy: () => this.destroy(),
       [Symbol.dispose]: () => {
-        destroy();
+        this.destroy();
       },
     };
+  }
+
+  /** Destroy this effect and run its cleanup function once. */
+  private destroy(): void {
+    if (this.destroyed) {
+      return;
+    }
+
+    this.destroyed = true;
+    EffectImpl.activeEffects.delete(this);
+    EffectImpl.executionQueue.delete(this);
+    this.cleanup();
   }
 
   /** Notify that this watch needs to be re-scheduled. */

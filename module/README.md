@@ -18,6 +18,16 @@ Or using npm:
 npx jsr add @deft-plus/reactivity
 ```
 
+### Global logging
+
+Set `SIGNAL_LOG=true` to enable logging for every signal when the application grants access to that environment variable:
+
+```bash
+SIGNAL_LOG=true deno run --allow-env=SIGNAL_LOG app.ts
+```
+
+Without environment permission, global logging safely remains disabled. A signal-level `log` option always takes precedence, so `{ log: false }` can disable logging for an individual signal.
+
 ## Signals
 
 Signals provide a way to create reactive values that automatically notify consumers when their value changes. They allow for fine-grained reactivity and lazy evaluation, making them ideal for performance-sensitive applications.

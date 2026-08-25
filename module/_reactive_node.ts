@@ -57,10 +57,10 @@ export abstract class ReactiveNode {
   }
 
   /** Called when a dependency may have changed. */
-  protected abstract onDependencyChange(): void;
+  protected onDependencyChange(): void {}
 
   /** Called when a consumer checks if the producer's value has changed. */
-  protected abstract onProducerMayChanged(): void;
+  protected onProducerMayChanged(): void {}
 
   /**
    * Checks if any of this node's dependencies have actually changed.
@@ -178,9 +178,13 @@ interface Dependency {
 }
 
 /** Configuration for logging changes in the reactive node. */
-interface LogConfig {
+export interface LogConfig {
+  /** Reactive value type displayed in the log heading. */
   type: string;
+  /** Human-readable name of the reactive value. */
   name: string;
+  /** Value after the reactive update. */
   newValue: unknown;
+  /** Value before the reactive update. */
   oldValue: unknown;
 }

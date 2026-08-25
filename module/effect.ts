@@ -97,8 +97,8 @@ export function effect(callback: EffectCallback): EffectRef {
  * @returns A reference ({@link EffectRef}) to the effect that can be manually destroyed.
  */
 effect.initial = function (callback: EffectCallback): EffectRef {
-  callback();
-  return effect(callback);
+  const watch = new EffectImpl(callback);
+  return watch.effect(true);
 };
 
 /** Stop all active effects. */
@@ -130,10 +130,14 @@ class EffectImpl extends ReactiveNode {
   /** Property to track the current tracking version. */
   private cleanupFn = NOOP_CLEANUP;
 
+  /** Whether this effect has already been destroyed. */
+  private destroyed = false;
+
   /** Stop all active effects. */
   public static resetEffects(): void {
-    EffectImpl.executionQueue.clear();
-    EffectImpl.activeEffects.clear();
+    for (const effect of EffectImpl.activeEffects) {
+      effect.destroy();
+    }
   }
 
   /** Called when a dependency may have changed. */
@@ -141,34 +145,39 @@ class EffectImpl extends ReactiveNode {
     this.notify();
   }
 
-  /** Called when a consumer checks if the producer's value has changed. */
-  protected override onProducerMayChanged(): void {
-    // Watches don't update producer values.
-  }
-
   /**
    * Get the effect reference.
    *
    * @returns A reference to the effect ({@link EffectRef}).
    */
-  public effect(): EffectRef {
+  public effect(initial = false): EffectRef {
     EffectImpl.activeEffects.add(this);
 
-    // Schedule the effect to run.
-    this.notify();
-
-    const destroy = () => {
-      this.cleanup();
-      EffectImpl.activeEffects.delete(this);
-      EffectImpl.executionQueue.delete(this);
-    };
+    if (initial) {
+      this.run();
+    } else {
+      // Schedule the effect to run.
+      this.notify();
+    }
 
     return {
-      destroy,
+      destroy: () => this.destroy(),
       [Symbol.dispose]: () => {
-        destroy();
+        this.destroy();
       },
     };
+  }
+
+  /** Destroy this effect and run its cleanup function once. */
+  private destroy(): void {
+    if (this.destroyed) {
+      return;
+    }
+
+    this.destroyed = true;
+    EffectImpl.activeEffects.delete(this);
+    EffectImpl.executionQueue.delete(this);
+    this.cleanup();
   }
 
   /** Notify that this watch needs to be re-scheduled. */
@@ -204,7 +213,9 @@ class EffectImpl extends ReactiveNode {
 
   /** Run the cleanup function. */
   private cleanup(): void {
-    this.cleanupFn();
+    const cleanupFn = this.cleanupFn;
+    this.cleanupFn = NOOP_CLEANUP;
+    cleanupFn();
   }
 
   /** Queue an effect for execution. */

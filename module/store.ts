@@ -121,7 +121,7 @@ export function store<T extends ValidStore>(initializeStoreValues: StoreValues<T
 
     const signalConfig = {
       ...(isConfigured && stateValue.name && { name: stateValue.name }),
-      ...(isConfigured && stateValue.log && { log: stateValue.log }),
+      ...(isConfigured && stateValue.log !== undefined && { log: stateValue.log }),
       ...(isConfigured && stateValue.equal && { equal: stateValue.equal }),
       ...(isConfigured && stateValue.subscribe && { subscribe: stateValue.subscribe }),
     } as SignalOptions<T>;
@@ -143,7 +143,7 @@ export function store<T extends ValidStore>(initializeStoreValues: StoreValues<T
   function useStore<U extends (keyof T)>(): ReadonlyState<T>[U];
   function useStore(): ReadonlyState<T>;
   function useStore<U extends (keyof T)>(selector?: U): ReadonlyState<T>[U] | ReadonlyState<T> {
-    return selector ? immutableState[selector] : immutableState;
+    return selector === undefined ? immutableState : immutableState[selector];
   }
 
   return useStore;

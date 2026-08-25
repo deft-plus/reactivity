@@ -1,19 +1,72 @@
 // Copyright the Deft+ authors. All rights reserved. Apache-2.0 license
 
-import { describe as group, test } from '@std/testing/bdd';
 import { expect } from '@std/expect';
 
 import { delay } from '@std/async';
 
 import { effect } from './effect.ts';
+import { memoSignal } from './memo.ts';
 import { signal } from './signal.ts';
 
-group('reactive / effect()', () => {
-  test('should listen for signal changes and trigger effects', async () => {
-    const value = signal(0);
-    const changes: number[] = [];
+Deno.test('effect() should listen for signal changes and trigger effects', async () => {
+  const value = signal(0);
+  const changes: number[] = [];
 
-    const effectRef = effect(() => {
+  const effectRef = effect(() => {
+    changes.push(value());
+  });
+
+  expect(changes).toEqual([]);
+
+  value.set(1);
+  await delay(1);
+  expect(changes).toEqual([1]);
+
+  value.set(2);
+  await delay(1);
+  expect(changes).toEqual([1, 2]);
+
+  effectRef.destroy();
+});
+
+Deno.test('EffectRef.destroy() should stop the effect', async () => {
+  const value = signal(0);
+  const changes: number[] = [];
+
+  const effectRef = effect(() => {
+    changes.push(value());
+  });
+
+  expect(changes).toEqual([]);
+
+  value.set(1);
+  await delay(1);
+  expect(changes).toEqual([1]);
+
+  effectRef.destroy();
+
+  value.set(2);
+  await delay(1);
+  expect(changes).toEqual([1]);
+});
+
+Deno.test('EffectRef.destroy() should be idempotent', () => {
+  let cleanupCalls = 0;
+  const effectRef = effect.initial(() => () => cleanupCalls++);
+
+  effectRef.destroy();
+  effectRef.destroy();
+  effectRef[Symbol.dispose]();
+
+  expect(cleanupCalls).toBe(1);
+});
+
+Deno.test('EffectRef[Symbol.dispose]() should stop the effect when it leaves scope', async () => {
+  const value = signal(0);
+  const changes: number[] = [];
+
+  {
+    using _effectRef = effect(() => {
       changes.push(value());
     });
 
@@ -22,95 +75,77 @@ group('reactive / effect()', () => {
     value.set(1);
     await delay(1);
     expect(changes).toEqual([1]);
+  }
 
-    value.set(2);
-    await delay(1);
-    expect(changes).toEqual([1, 2]);
+  value.set(2);
+  await delay(1);
+  expect(changes).toEqual([1]);
+});
 
-    effectRef.destroy();
+Deno.test('effect.initial() should run the effect immediately', async () => {
+  const value = signal(0);
+  const changes = [] as number[];
+
+  const effectRef = effect.initial(() => {
+    changes.push(value());
   });
 
-  test('should stop an effect when destroyed', async () => {
-    const value = signal(0);
-    const changes: number[] = [];
+  expect(changes).toEqual([0]);
+  await delay(1);
+  expect(changes).toEqual([0]);
 
-    const effectRef = effect(() => {
-      changes.push(value());
-    });
+  value.set(1);
+  await delay(1);
+  expect(changes).toEqual([0, 1]);
 
-    expect(changes).toEqual([]);
+  value.set(2);
+  await delay(1);
+  expect(changes).toEqual([0, 1, 2]);
 
-    value.set(1);
-    await delay(1);
-    expect(changes).toEqual([1]);
+  effectRef.destroy();
+});
 
-    effectRef.destroy();
-
-    value.set(2);
-    await delay(1);
-    expect(changes).toEqual([1]);
+Deno.test('effect() should skip execution when dependency values do not change', async () => {
+  const source = signal(1);
+  const parity = memoSignal(() => source() % 2);
+  const changes: number[] = [];
+  const effectRef = effect(() => {
+    changes.push(parity());
   });
 
-  test('should stop an effect when out of scope', async () => {
-    const value = signal(0);
-    const changes: number[] = [];
+  await delay(1);
+  expect(changes).toEqual([1]);
 
-    {
-      using _effectRef = effect(() => {
-        changes.push(value());
-      });
+  source.set(3);
+  await delay(1);
+  expect(changes).toEqual([1]);
 
-      expect(changes).toEqual([]);
+  effectRef.destroy();
+});
 
-      value.set(1);
-      await delay(1);
-      expect(changes).toEqual([1]);
-    }
+Deno.test('effect.resetEffects() should stop all active effects', async () => {
+  const value = signal(0);
+  const changes: number[] = [];
+  let cleanupCalls = 0;
 
-    value.set(2);
-    await delay(1);
-    expect(changes).toEqual([1]);
+  const effectRef = effect(() => {
+    changes.push(value());
+    return () => cleanupCalls++;
   });
 
-  test('should allow to use the `initial` method to run the effect immediately', async () => {
-    const value = signal(0);
-    const changes = [] as number[];
+  expect(changes).toEqual([]);
 
-    const effectRef = effect.initial(() => {
-      changes.push(value());
-    });
+  value.set(1);
+  await delay(1);
+  expect(changes).toEqual([1]);
 
-    expect(changes).toEqual([0]);
+  effect.resetEffects();
+  expect(cleanupCalls).toBe(1);
 
-    value.set(1);
-    await delay(1);
-    expect(changes).toEqual([0, 1]);
+  effectRef.destroy();
+  expect(cleanupCalls).toBe(1);
 
-    value.set(2);
-    await delay(1);
-    expect(changes).toEqual([0, 1, 2]);
-
-    effectRef.destroy();
-  });
-
-  test('should reset all active effects', async () => {
-    const value = signal(0);
-    const changes: number[] = [];
-
-    effect(() => {
-      changes.push(value());
-    });
-
-    expect(changes).toEqual([]);
-
-    value.set(1);
-    await delay(1);
-    expect(changes).toEqual([1]);
-
-    effect.resetEffects();
-
-    value.set(2);
-    await delay(1);
-    expect(changes).toEqual([1]);
-  });
+  value.set(2);
+  await delay(1);
+  expect(changes).toEqual([1]);
 });

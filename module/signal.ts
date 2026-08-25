@@ -75,6 +75,7 @@ import {
   type SignalOptions,
   type WritableSignal,
 } from './_api.ts';
+import { resolveSignalLog } from './_logging.ts';
 import { ReactiveNode } from './_reactive_node.ts';
 import { untrackedSignal } from './untracked.ts';
 
@@ -175,7 +176,7 @@ export function signal<T>(
 ): WritableSignal<T> | WritableEventSignal<T> {
   const {
     name = `signal_${Math.random().toString(36).slice(2)}`,
-    log = Deno.env.get('SIGNAL_LOG') === 'true',
+    log = resolveSignalLog(options?.log),
     equal = defaultEquals,
     subscribe = () => {},
     allowEvents = false as true,
@@ -225,16 +226,6 @@ class WritableSignalImpl<T> extends ReactiveNode {
 
   /** The current value of the signal as read-only. */
   private readonlySignal?: ReadonlySignal<T>;
-
-  /** Called when a dependency may have changed. */
-  protected override onDependencyChange(): void {
-    // Writable signals are not consumers, so this doesn't apply.
-  }
-
-  /** Called when a consumer checks if the producer's value has changed. */
-  protected override onProducerMayChanged(): void {
-    // Value versions are always up-to-date for writable signals.
-  }
 
   /**
    * Set a new value for the signal and notify consumers if changed.

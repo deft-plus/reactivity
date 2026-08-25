@@ -97,8 +97,8 @@ export function effect(callback: EffectCallback): EffectRef {
  * @returns A reference ({@link EffectRef}) to the effect that can be manually destroyed.
  */
 effect.initial = function (callback: EffectCallback): EffectRef {
-  callback();
-  return effect(callback);
+  const watch = new EffectImpl(callback);
+  return watch.effect(true);
 };
 
 /** Stop all active effects. */
@@ -141,26 +141,31 @@ class EffectImpl extends ReactiveNode {
     this.notify();
   }
 
-  /** Called when a consumer checks if the producer's value has changed. */
-  protected override onProducerMayChanged(): void {
-    // Watches don't update producer values.
-  }
-
   /**
    * Get the effect reference.
    *
    * @returns A reference to the effect ({@link EffectRef}).
    */
-  public effect(): EffectRef {
+  public effect(initial = false): EffectRef {
     EffectImpl.activeEffects.add(this);
 
-    // Schedule the effect to run.
-    this.notify();
+    if (initial) {
+      this.run();
+    } else {
+      // Schedule the effect to run.
+      this.notify();
+    }
 
+    let destroyed = false;
     const destroy = () => {
-      this.cleanup();
+      if (destroyed) {
+        return;
+      }
+
+      destroyed = true;
       EffectImpl.activeEffects.delete(this);
       EffectImpl.executionQueue.delete(this);
+      this.cleanup();
     };
 
     return {
@@ -204,7 +209,9 @@ class EffectImpl extends ReactiveNode {
 
   /** Run the cleanup function. */
   private cleanup(): void {
-    this.cleanupFn();
+    const cleanupFn = this.cleanupFn;
+    this.cleanupFn = NOOP_CLEANUP;
+    cleanupFn();
   }
 
   /** Queue an effect for execution. */

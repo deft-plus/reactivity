@@ -2,13 +2,13 @@
   "tasks": {
     "lint": "deno lint && deno fmt --check",
     "fmt": "deno fmt",
-    "test": "rm -rf .coverage && deno test -A --coverage=.coverage **/*_test.ts ; deno coverage .coverage",
-    "test:u": "rm -rf .coverage && deno test -A --coverage=.coverage **/*_test.ts -- -u ; deno coverage .coverage",
+    "check": "deno check module/mod.ts module/**/*_test.ts",
+    "test": "deno test --coverage=.coverage --clean module && deno coverage --threshold=100 .coverage",
+    "test:u": "deno test --coverage=.coverage --clean module -- -u && deno coverage --threshold=100 .coverage",
     "jsdoc:generate": "rm -rf .deno-docs && deno doc --html --output=./.deno-docs module/**/*.ts",
     "jsdoc:lint": "deno doc --lint module/*.ts"
   },
   "workspace": ["./module", "./docs"],
-  "lock": false,
   "compilerOptions": {
     "lib": ["dom", "dom.iterable", "dom.extras", "deno.ns"],
     "strict": true,
@@ -23,7 +23,7 @@
   },
   "fmt": {
     "include": ["./"],
-    "exclude": [".git", ".coverage", ".deno-docs"],
+    "exclude": [".git", ".agents", ".coverage", ".deno-docs"],
     "useTabs": false,
     "lineWidth": 100,
     "indentWidth": 2,
@@ -31,7 +31,7 @@
     "proseWrap": "never"
   },
   "lint": {
-    "exclude": [".git", ".coverage", ".deno-docs"],
+    "exclude": [".git", ".agents", ".coverage", ".deno-docs"],
     "rules": {
       "tags": ["recommended"],
       "include": [

@@ -57,10 +57,10 @@ export abstract class ReactiveNode {
   }
 
   /** Called when a dependency may have changed. */
-  protected abstract onDependencyChange(): void;
+  protected onDependencyChange(): void {}
 
   /** Called when a consumer checks if the producer's value has changed. */
-  protected abstract onProducerMayChanged(): void;
+  protected onProducerMayChanged(): void {}
 
   /**
    * Checks if any of this node's dependencies have actually changed.

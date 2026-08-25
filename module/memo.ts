@@ -28,6 +28,7 @@ import {
   type MemoizedSignal,
   type MemoizedSignalOptions,
 } from './_api.ts';
+import { resolveSignalLog } from './_logging.ts';
 import { ReactiveNode } from './_reactive_node.ts';
 import { untrackedSignal } from './untracked.ts';
 
@@ -76,7 +77,7 @@ export function memoSignal<T>(
 ): MemoizedSignal<T> {
   const {
     name = `memo_signal_${Math.random().toString(36).slice(2)}`,
-    log = Deno.env.get('SIGNAL_LOG') === 'true',
+    log = resolveSignalLog(options?.log),
     equal = defaultEquals,
     subscribe = () => {},
   } = options ?? {};
@@ -84,6 +85,7 @@ export function memoSignal<T>(
   const node = new MemoizedSignalImp(compute, { name, log, equal, subscribe });
 
   return markAsSignal('memoized', node.signal.bind(node), {
+    identifier: name,
     untracked: node.untracked.bind(node),
     toString: node.toString.bind(node),
   });

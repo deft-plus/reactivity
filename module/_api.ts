@@ -69,7 +69,7 @@ export function getSignalType<T>(signal: Signal<T>): SignalType {
  * @returns `true` if the value is a signal ({@link Signal}), `false` otherwise.
  */
 export function isSignal<T = unknown>(value: unknown): value is Signal<T> {
-  return value !== null && SIGNAL_TYPES.includes((value as ReadonlySignal<T>)[SIGNAL]);
+  return typeof value === 'function' && SIGNAL_TYPES.includes((value as ReadonlySignal<T>)[SIGNAL]);
 }
 
 /**

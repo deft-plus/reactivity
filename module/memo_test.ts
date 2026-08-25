@@ -1,6 +1,5 @@
 // Copyright the Deft+ authors. All rights reserved. Apache-2.0 license
 
-import { describe as group, test } from '@std/testing/bdd';
 import { assertSpyCalls, stub } from '@std/testing/mock';
 import { expect } from '@std/expect';
 
@@ -11,244 +10,248 @@ import { memoSignal } from './memo.ts';
 import { signal } from './signal.ts';
 import { effect } from './effect.ts';
 
-group('reactive / memoSignal()', () => {
-  test('should allow to create a memoized signal', () => {
-    const counter = signal(0);
-    const doubleCounter = memoSignal(() => counter() * 2);
+Deno.test('memoSignal() should create a memoized signal', () => {
+  const counter = signal(0);
+  const doubleCounter = memoSignal(() => counter() * 2);
 
-    expect(doubleCounter()).toBe(0);
+  expect(doubleCounter()).toBe(0);
 
-    counter.set(1);
+  counter.set(1);
 
-    expect(doubleCounter()).toBe(2);
+  expect(doubleCounter()).toBe(2);
+});
+
+Deno.test('memoSignal() should expose its configured name as the identifier', () => {
+  const value = memoSignal(() => 42, { name: 'answer' });
+
+  expect(value.identifier).toBe('answer');
+});
+
+Deno.test('memoSignal() should support a custom equality function', () => {
+  const counter = signal(0);
+
+  // Can only be set to a value greater than or equal to the current value.
+  const doubleCounter = memoSignal(
+    () => counter() * 2,
+    { equal: (a, b) => a >= b },
+  );
+
+  expect(doubleCounter()).toBe(0);
+
+  counter.set(1);
+
+  expect(doubleCounter()).toBe(2);
+
+  counter.set(4);
+
+  expect(doubleCounter()).toBe(8);
+
+  counter.set(2);
+
+  expect(doubleCounter()).toBe(8);
+
+  counter.set(1);
+
+  expect(doubleCounter()).toBe(8);
+});
+
+Deno.test('memoSignal() should schedule on dependencies (memoized) change', async () => {
+  const counter = signal(0);
+  const doubleCounter = memoSignal(() => counter() * 2);
+
+  const effectCounter = [] as number[];
+
+  effect(() => {
+    effectCounter.push(doubleCounter());
   });
 
-  test('should allow to use memoized values with different equals fn', () => {
-    const counter = signal(0);
+  await delay(1);
+  expect(effectCounter).toStrictEqual([0]);
 
-    // Can only be set to a value greater than or equal to the current value.
-    const doubleCounter = memoSignal(
-      () => counter() * 2,
-      { equal: (a, b) => a >= b },
-    );
+  counter.set(1);
 
-    expect(doubleCounter()).toBe(0);
+  await delay(1);
+  expect(effectCounter).toStrictEqual([0, 2]);
+});
 
-    counter.set(1);
+Deno.test('memoSignal() should apply its configuration options', () => {
+  using consoleStub = stub(console, 'log', (_) => {});
 
-    expect(doubleCounter()).toBe(2);
+  const newCalled = [] as number[];
+  const oldCalled = [] as number[];
+  const counter = signal(0);
 
-    counter.set(4);
-
-    expect(doubleCounter()).toBe(8);
-
-    counter.set(2);
-
-    expect(doubleCounter()).toBe(8);
-
-    counter.set(1);
-
-    expect(doubleCounter()).toBe(8);
-  });
-
-  test('should schedule on dependencies (memoized) change', async () => {
-    const counter = signal(0);
-    const doubleCounter = memoSignal(() => counter() * 2);
-
-    const effectCounter = [] as number[];
-
-    effect(() => {
-      effectCounter.push(doubleCounter());
-    });
-
-    await delay(1);
-    expect(effectCounter).toStrictEqual([0]);
-
-    counter.set(1);
-
-    await delay(1);
-    expect(effectCounter).toStrictEqual([0, 2]);
-  });
-
-  test('should allow to pass a config object', () => {
-    using consoleStub = stub(console, 'log', (_) => {});
-
-    const newCalled = [] as number[];
-    const oldCalled = [] as number[];
-    const counter = signal(0);
-
-    const doubleCounter = memoSignal(
-      () => counter() * 2,
-      {
-        name: 'doubleCounter',
-        log: true,
-        subscribe: (newValue, oldValue) => {
-          newCalled.push(newValue);
-          oldCalled.push(oldValue);
-        },
+  const doubleCounter = memoSignal(
+    () => counter() * 2,
+    {
+      name: 'doubleCounter',
+      log: true,
+      subscribe: (newValue, oldValue) => {
+        newCalled.push(newValue);
+        oldCalled.push(oldValue);
       },
-    );
+    },
+  );
 
-    expect(doubleCounter()).toBe(0);
+  expect(doubleCounter()).toBe(0);
 
-    expect(newCalled).toStrictEqual([0]);
-    expect(oldCalled).toStrictEqual([undefined]);
+  expect(newCalled).toStrictEqual([0]);
+  expect(oldCalled).toStrictEqual([undefined]);
 
-    counter.set(1);
-    expect(doubleCounter()).toBe(2);
-    expect(newCalled).toStrictEqual([0, 2]);
-    expect(oldCalled).toStrictEqual([undefined, 0]);
+  counter.set(1);
+  expect(doubleCounter()).toBe(2);
+  expect(newCalled).toStrictEqual([0, 2]);
+  expect(oldCalled).toStrictEqual([undefined, 0]);
 
-    counter.set(23);
-    expect(doubleCounter()).toBe(46);
-    expect(newCalled).toStrictEqual([0, 2, 46]);
-    expect(oldCalled).toStrictEqual([undefined, 0, 2]);
+  counter.set(23);
+  expect(doubleCounter()).toBe(46);
+  expect(newCalled).toStrictEqual([0, 2, 46]);
+  expect(oldCalled).toStrictEqual([undefined, 0, 2]);
 
-    counter.set(23);
-    expect(doubleCounter()).toBe(46);
-    expect(newCalled).toStrictEqual([0, 2, 46]);
-    expect(oldCalled).toStrictEqual([undefined, 0, 2]);
+  counter.set(23);
+  expect(doubleCounter()).toBe(46);
+  expect(newCalled).toStrictEqual([0, 2, 46]);
+  expect(oldCalled).toStrictEqual([undefined, 0, 2]);
 
-    assertSpyCalls(consoleStub, 9); // 9 calls since each log is called 3 times.
+  assertSpyCalls(consoleStub, 9); // 9 calls since each log is called 3 times.
+});
+
+Deno.test('memoSignal() should be able to keep track of multiple dependencies and batch changes', () => {
+  const counter = signal(0);
+  const counter2 = signal(0);
+
+  const changes = [] as number[];
+
+  const doubleCounter = memoSignal(() => {
+    const value = counter() * 2 + counter2();
+    changes.push(value);
+    return value;
   });
 
-  test('should be able to keep track of multiple dependencies and batch changes', () => {
-    const counter = signal(0);
-    const counter2 = signal(0);
+  expect(doubleCounter()).toBe(0);
 
-    const changes = [] as number[];
+  counter.set(1);
+  counter2.set(2);
 
-    const doubleCounter = memoSignal(() => {
-      const value = counter() * 2 + counter2();
-      changes.push(value);
-      return value;
-    });
+  expect(doubleCounter()).toBe(4);
+  expect(changes).toStrictEqual([0, 4]);
+});
 
-    expect(doubleCounter()).toBe(0);
+Deno.test('memoSignal() should throw on a circular dependency', () => {
+  let circularCounter: MemoizedSignal<number> | null = null;
 
-    counter.set(1);
-    counter2.set(2);
+  const counter = memoSignal(() => (circularCounter?.() ?? 0) * 2);
+  circularCounter = memoSignal(() => counter());
 
-    expect(doubleCounter()).toBe(4);
-    expect(changes).toStrictEqual([0, 4]);
+  expect(() => counter()).toThrow();
+});
+
+Deno.test('MemoizedSignal.untracked() should not track dependencies', () => {
+  const changes: number[] = [];
+
+  const counter = signal(0);
+  const doubleCounter = memoSignal(() => counter() * 2);
+
+  effect(() => {
+    changes.push(doubleCounter.untracked());
   });
 
-  test('should throw if it having a circular dependency', () => {
-    let circularCounter: MemoizedSignal<number> | null = null;
+  counter.set(1);
 
-    const counter = memoSignal(() => (circularCounter?.() ?? 0) * 2);
-    circularCounter = memoSignal(() => counter());
+  expect(changes).toStrictEqual([]);
 
-    expect(() => counter()).toThrow();
+  counter.set(2);
+
+  expect(changes).toStrictEqual([]);
+});
+
+Deno.test('memoSignal() should update conditional dependencies', () => {
+  const counter = signal(0);
+  const counter2 = signal(0);
+  const condition = signal(false);
+
+  const conditionalSignal = memoSignal(() => condition() ? counter() : counter2());
+
+  expect(conditionalSignal()).toBe(0);
+
+  counter.set(23);
+  expect(conditionalSignal()).toBe(0);
+
+  condition.set(true);
+  expect(conditionalSignal()).toBe(23);
+
+  counter2.set(2);
+  expect(conditionalSignal()).toBe(23);
+});
+
+Deno.test('memoSignal() should not propagate equivalent values', () => {
+  const counter = signal(10);
+  const counter2 = signal(10);
+
+  const doubleCounter = memoSignal(() => counter() + counter2());
+
+  expect(doubleCounter()).toBe(20);
+
+  counter.set(7);
+  counter2.set(13);
+
+  expect(doubleCounter()).toBe(20);
+});
+
+Deno.test('memoSignal() should cache exceptions thrown until computed gets dirty again', () => {
+  const counter = signal(0);
+  const errorCounter = memoSignal(() => {
+    if (counter() === 0) {
+      throw new Error('Counter is zero');
+    }
+
+    return counter();
   });
 
-  test('should not track changes in untracked blocks', () => {
-    const changes: number[] = [];
+  expect(() => errorCounter()).toThrow('Counter is zero');
 
-    const counter = signal(0);
-    const doubleCounter = memoSignal(() => counter() * 2);
+  counter.set(1);
 
-    effect(() => {
-      changes.push(doubleCounter.untracked());
-    });
+  expect(errorCounter()).toBe(1);
+});
 
-    counter.set(1);
-
-    expect(changes).toStrictEqual([]);
-
-    counter.set(2);
-
-    expect(changes).toStrictEqual([]);
+Deno.test("memoSignal() should not update consumers when dependencies don't change", () => {
+  const source = signal(0);
+  const isEven = memoSignal(() => source() % 2 === 0);
+  let updateCounter = 0;
+  const updateTracker = memoSignal(() => {
+    isEven();
+    return updateCounter++;
   });
 
-  test('should allow to use a signal as a condition', () => {
-    const counter = signal(0);
-    const counter2 = signal(0);
-    const condition = signal(false);
+  updateTracker();
+  expect(updateCounter).toEqual(1);
 
-    const conditionalSignal = memoSignal(() => condition() ? counter() : counter2());
+  source.set(1);
+  updateTracker();
+  expect(updateCounter).toEqual(2);
 
-    expect(conditionalSignal()).toBe(0);
+  // Setting the counter to another odd value should not trigger `updateTracker` to update.
+  source.set(3);
+  updateTracker();
+  expect(updateCounter).toEqual(2);
 
-    counter.set(23);
-    expect(conditionalSignal()).toBe(0);
+  source.set(4);
+  updateTracker();
+  expect(updateCounter).toEqual(3);
+});
 
-    condition.set(true);
-    expect(conditionalSignal()).toBe(23);
-
-    counter2.set(2);
-    expect(conditionalSignal()).toBe(23);
-  });
-
-  test('should no re-compute if the value is the same', () => {
-    const counter = signal(10);
-    const counter2 = signal(10);
-
-    const doubleCounter = memoSignal(() => counter() + counter2());
-
-    expect(doubleCounter()).toBe(20);
-
-    counter.set(7);
-    counter2.set(13);
-
-    expect(doubleCounter()).toBe(20);
-  });
-
-  test('should cache exceptions thrown until computed gets dirty again', () => {
-    const counter = signal(0);
-    const errorCounter = memoSignal(() => {
-      if (counter() === 0) {
-        throw new Error('Counter is zero');
-      }
-
-      return counter();
-    });
-
-    expect(() => errorCounter()).toThrow('Counter is zero');
-
-    counter.set(1);
-
-    expect(errorCounter()).toBe(1);
-  });
-
-  test("should not update dependencies of computations when dependencies don't change", () => {
-    const source = signal(0);
-    const isEven = memoSignal(() => source() % 2 === 0);
-    let updateCounter = 0;
-    const updateTracker = memoSignal(() => {
-      isEven();
-      return updateCounter++;
-    });
-
-    updateTracker();
-    expect(updateCounter).toEqual(1);
-
-    source.set(1);
-    updateTracker();
-    expect(updateCounter).toEqual(2);
-
-    // Setting the counter to another odd value should not trigger `updateTracker` to update.
-    source.set(3);
-    updateTracker();
-    expect(updateCounter).toEqual(2);
-
-    source.set(4);
-    updateTracker();
-    expect(updateCounter).toEqual(3);
-  });
-
-  test('should allow signal creation within computed', () => {
-    const doubleCounter = memoSignal(() => {
-      const counter = signal(1);
-      return counter() * 2;
-    });
-
-    expect(doubleCounter()).toBe(2);
-  });
-
-  test('should have a toString implementation', () => {
+Deno.test('memoSignal() should support signal creation during computation', () => {
+  const doubleCounter = memoSignal(() => {
     const counter = signal(1);
-    const doubleCounter = memoSignal(() => counter() * 2);
-    expect(doubleCounter + '').toBe('[MemoSignal: 2]');
+    return counter() * 2;
   });
+
+  expect(doubleCounter()).toBe(2);
+});
+
+Deno.test('MemoizedSignal.toString() should return its string representation', () => {
+  const counter = signal(1);
+  const doubleCounter = memoSignal(() => counter() * 2);
+  expect(doubleCounter + '').toBe('[MemoSignal: 2]');
 });

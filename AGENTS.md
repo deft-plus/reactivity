@@ -39,7 +39,18 @@ Do not grant `-A` to routine commands. Add the narrowest permission needed by th
 - Use explicit `.ts` extensions for relative imports and use import-map aliases for JSR dependencies.
 - Preserve strict TypeScript types. Avoid `any`, non-null assertions, unchecked casts, and broad `Function` types unless the mapping genuinely requires them and the lint suppression explains why.
 - Use two-space indentation, single quotes, 100-column TypeScript formatting, and Deno's formatter. Markdown uses `proseWrap: never`.
-- Add Apache-2.0 copyright headers to TypeScript source and test files.
+- Begin every TypeScript source and test file with the exact copyright header below, followed by a descriptive module-level JSDoc block containing `@module`. Describe the file's purpose rather than repeating its filename.
+
+  ```ts
+  // Copyright the Deft+ authors. All rights reserved. Apache-2.0 license
+
+  /**
+   * Description of the file's purpose and the APIs or behavior it contains.
+   *
+   * @module
+   */
+  ```
+
 - Document public APIs with JSDoc, including behavior, parameters, returns, and a realistic example. Keep public signatures free of private referenced types so `deno doc --lint` succeeds.
 
 ## Reactive implementation invariants

@@ -209,46 +209,51 @@ export function signal<T>(
  * @internal
  */
 class WritableSignalImpl<T> extends ReactiveNode {
-  constructor(
-    private value: T,
-    private options: Required<SignalEventOptions<T>>,
-  ) {
-    super();
-    if (this.options.allowEvents) {
-      this.listener = (event) => this.set((event as CustomEvent).detail);
+  /** Current signal value. */
+  #value: T;
 
-      addEventListener(options.name, this.listener);
+  /** Fully resolved signal options. */
+  readonly #options: Required<SignalEventOptions<T>>;
+
+  constructor(value: T, options: Required<SignalEventOptions<T>>) {
+    super();
+    this.#value = value;
+    this.#options = options;
+    if (this.#options.allowEvents) {
+      this.#listener = (event) => this.set((event as CustomEvent).detail);
+
+      addEventListener(options.name, this.#listener);
     }
   }
 
   /** Listener for events if allowed. */
-  private listener: ((event: Event) => void) | null = null;
+  #listener: ((event: Event) => void) | null = null;
 
   /** The current value of the signal as read-only. */
-  private readonlySignal?: ReadonlySignal<T>;
+  #readonlySignal?: ReadonlySignal<T>;
 
   /**
    * Set a new value for the signal and notify consumers if changed.
    *
    * @param newValue - The new value to set.
    */
-  public set(newValue: T): void {
-    if (!this.options.equal(this.value, newValue)) {
-      const oldValue = this.value;
-      this.value = newValue;
+  set(newValue: T): void {
+    if (!this.#options.equal(this.#value, newValue)) {
+      const oldValue = this.#value;
+      this.#value = newValue;
       this.valueVersion++;
       this.notifyConsumers();
 
-      if (this.options.log) {
+      if (this.#options.log) {
         super.log({
           type: 'Signal',
-          name: this.options.name,
-          newValue: this.value,
+          name: this.#options.name,
+          newValue: this.#value,
           oldValue,
         });
       }
 
-      this.options.subscribe?.(this.value, oldValue);
+      this.#options.subscribe?.(this.#value, oldValue);
     }
   }
 
@@ -257,8 +262,8 @@ class WritableSignalImpl<T> extends ReactiveNode {
    *
    * @param updater - The function to update the value.
    */
-  public update(updater: (value: T) => T): void {
-    this.set(updater(this.value));
+  update(updater: (value: T) => T): void {
+    this.set(updater(this.#value));
   }
 
   /**
@@ -266,22 +271,22 @@ class WritableSignalImpl<T> extends ReactiveNode {
    *
    * @param mutator - The function to mutate the value.
    */
-  public mutate(mutator: (value: T) => void): void {
-    const oldValue = this.value;
-    mutator(this.value);
+  mutate(mutator: (value: T) => void): void {
+    const oldValue = this.#value;
+    mutator(this.#value);
     this.valueVersion++;
     this.notifyConsumers();
 
-    if (this.options.log) {
+    if (this.#options.log) {
       super.log({
         type: 'Signal',
-        name: this.options.name,
-        newValue: this.value,
+        name: this.#options.name,
+        newValue: this.#value,
         oldValue,
       });
     }
 
-    this.options.subscribe?.(this.value, oldValue);
+    this.#options.subscribe?.(this.#value, oldValue);
   }
 
   /**
@@ -289,19 +294,19 @@ class WritableSignalImpl<T> extends ReactiveNode {
    *
    * @returns A read-only signal.
    */
-  public readonly(): ReadonlySignal<T> {
-    if (!this.readonlySignal) {
-      this.readonlySignal = markAsSignal<ReadonlySignal<T>>(
+  readonly(): ReadonlySignal<T> {
+    if (!this.#readonlySignal) {
+      this.#readonlySignal = markAsSignal<ReadonlySignal<T>>(
         'readonly',
         () => this.signal(),
         {
-          identifier: `${this.options.name}_readonly_${Math.random().toString(36).slice(2)}`,
+          identifier: `${this.#options.name}_readonly_${Math.random().toString(36).slice(2)}`,
           untracked: () => this.untracked(),
         },
       );
     }
 
-    return this.readonlySignal;
+    return this.#readonlySignal;
   }
 
   /**
@@ -309,7 +314,7 @@ class WritableSignalImpl<T> extends ReactiveNode {
    *
    * @returns An untracked signal.
    */
-  public untracked(): T {
+  untracked(): T {
     return untrackedSignal(() => this.signal());
   }
 
@@ -318,17 +323,17 @@ class WritableSignalImpl<T> extends ReactiveNode {
    *
    * @returns The current value of the signal.
    */
-  public signal(): T {
+  signal(): T {
     this.recordAccess();
-    return this.value;
+    return this.#value;
   }
 
   /** Dispose of the signal and remove any event listeners. */
-  public dispose(): void {
-    if (this.options.allowEvents && this.listener) {
-      this.options.onDispose?.();
+  dispose(): void {
+    if (this.#options.allowEvents && this.#listener) {
+      this.#options.onDispose?.();
 
-      removeEventListener(this.options.name, this.listener);
+      removeEventListener(this.#options.name, this.#listener);
     }
   }
 
@@ -337,7 +342,7 @@ class WritableSignalImpl<T> extends ReactiveNode {
    *
    * @returns A string representation of the signal.
    */
-  public override toString(): string {
+  override toString(): string {
     return `[Signal: ${JSON.stringify(this.signal())}]`;
   }
 }

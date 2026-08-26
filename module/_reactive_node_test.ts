@@ -4,22 +4,22 @@ import { expect } from '@std/expect';
 import { ReactiveNode } from './_reactive_node.ts';
 
 class TestReactiveNode extends ReactiveNode {
-  public dependencyChanges = 0;
+  dependencyChanges = 0;
 
-  public get hasDependencies(): boolean {
+  get hasDependencies(): boolean {
     return this.hasProducers;
   }
 
-  public read(): void {
+  read(): void {
     this.recordAccess();
   }
 
-  public write(): void {
+  write(): void {
     this.valueVersion++;
     this.notifyConsumers();
   }
 
-  public track(read: () => void): void {
+  track(read: () => void): void {
     const previousConsumer = ReactiveNode.setActiveConsumer(this);
     this.trackingVersion++;
     try {
@@ -29,31 +29,34 @@ class TestReactiveNode extends ReactiveNode {
     }
   }
 
-  public dependenciesChanged(): boolean {
+  dependenciesChanged(): boolean {
     return this.haveDependenciesChanged();
   }
 
-  public checkForProducerChanges(): void {
+  checkForProducerChanges(): void {
     this.onProducerMayChanged();
   }
 
-  protected override onDependencyChange(): void {
+  override onDependencyChange(): void {
     this.dependencyChanges++;
   }
 }
 
 class ReadingConsumerNode extends TestReactiveNode {
-  public constructor(private producer: TestReactiveNode) {
+  readonly #producer: TestReactiveNode;
+
+  constructor(producer: TestReactiveNode) {
     super();
+    this.#producer = producer;
   }
 
-  protected override onDependencyChange(): void {
-    this.producer.read();
+  override onDependencyChange(): void {
+    this.#producer.read();
   }
 }
 
 class DefaultReactiveNode extends ReactiveNode {
-  public notifyDependencyChange(): void {
+  notifyDependencyChange(): void {
     this.onDependencyChange();
   }
 }

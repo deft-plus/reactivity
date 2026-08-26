@@ -96,50 +96,55 @@ export function memoSignal<T>(
  * @internal
  */
 class MemoizedSignalImp<T> extends ReactiveNode {
-  constructor(
-    private compute: () => T,
-    private options: Required<MemoizedSignalOptions<T>>,
-  ) {
+  /** Computation used to derive the memoized value. */
+  readonly #compute: () => T;
+
+  /** Fully resolved memoized signal options. */
+  readonly #options: Required<MemoizedSignalOptions<T>>;
+
+  constructor(compute: () => T, options: Required<MemoizedSignalOptions<T>>) {
     super();
+    this.#compute = compute;
+    this.#options = options;
   }
 
   /** Current value of the computation or one of the special symbols. */
-  private value: MemoizedValue<T> = UNSET;
+  #value: MemoizedValue<T> = UNSET;
 
   /** Error from the last computation if it failed. */
-  private error: unknown = null;
+  #error: unknown = null;
 
   /** Flag indicating if the value is stale. */
-  private stale = true;
+  #stale = true;
 
   /** Called when a dependency may have changed. */
-  protected override onDependencyChange(): void {
-    if (this.stale) {
+  override onDependencyChange(): void {
+    if (this.#stale) {
       return; // If already stale, no need to reprocess. This also allow batching changes.
     }
 
-    this.stale = true; // Mark the value as stale.
+    this.#stale = true; // Mark the value as stale.
     this.notifyConsumers(); // Notify consumers about potential change.
   }
 
   /** Called when a consumer checks if the producer's value has changed. */
-  protected override onProducerMayChanged(): void {
-    if (!this.stale) {
+  override onProducerMayChanged(): void {
+    if (!this.#stale) {
       return; // If not stale, no update needed.
     }
 
     // If dependencies haven't changed, resolve stale.
     if (
-      this.value !== UNSET &&
-      this.value !== COMPUTING &&
+      this.#value !== UNSET &&
+      this.#value !== COMPUTING &&
       !this.haveDependenciesChanged()
     ) {
-      this.stale = false;
+      this.#stale = false;
       return;
     }
 
     // Recompute the value as it is stale.
-    this.recomputeValue();
+    this.#recomputeValue();
   }
 
   /**
@@ -147,7 +152,7 @@ class MemoizedSignalImp<T> extends ReactiveNode {
    *
    * @returns The current value of the signal without creating a dependency.
    */
-  public untracked(): T {
+  untracked(): T {
     return untrackedSignal(() => this.signal()); // Use untracked utility to access value.
   }
 
@@ -156,65 +161,65 @@ class MemoizedSignalImp<T> extends ReactiveNode {
    *
    * @returns The current value of the signal.
    */
-  public signal(): T {
+  signal(): T {
     this.onProducerMayChanged();
     this.recordAccess();
 
-    if (this.value === ERRORED) {
-      throw this.error;
+    if (this.#value === ERRORED) {
+      throw this.#error;
     }
 
-    return this.value as T;
+    return this.#value as T;
   }
 
   /** Recomputes the value if needed. */
-  private recomputeValue(): void {
-    if (this.value === COMPUTING) {
+  #recomputeValue(): void {
+    if (this.#value === COMPUTING) {
       throw new Error('Cycle detected in computations.'); // Prevent infinite loops.
     }
 
-    const oldValue = this.value;
-    this.value = COMPUTING;
+    const oldValue = this.#value;
+    this.#value = COMPUTING;
 
     this.trackingVersion++;
     const previousConsumer = ReactiveNode.setActiveConsumer(this);
     let newValue: MemoizedValue<T>;
 
     try {
-      newValue = this.compute();
+      newValue = this.#compute();
     } catch (err) {
       newValue = ERRORED;
-      this.error = err;
+      this.#error = err;
     } finally {
       ReactiveNode.setActiveConsumer(previousConsumer);
     }
 
-    this.stale = false;
+    this.#stale = false;
 
     // Update value if there is a change.
     if (
       oldValue !== UNSET &&
       oldValue !== ERRORED &&
       newValue !== ERRORED &&
-      this.options.equal(oldValue, newValue)
+      this.#options.equal(oldValue, newValue)
     ) {
-      this.value = oldValue; // Keep old value if new value is equivalent.
+      this.#value = oldValue; // Keep old value if new value is equivalent.
       return;
     }
 
-    this.value = newValue;
+    this.#value = newValue;
     this.valueVersion++;
 
-    if (this.options.log) {
+    if (this.#options.log) {
       super.log({
         type: 'MemoSignal',
-        name: this.options.name,
-        newValue: this.value,
+        name: this.#options.name,
+        newValue: this.#value,
         oldValue,
       });
     }
 
-    this.options.subscribe(this.value as T, (oldValue === UNSET ? undefined : oldValue) as T);
+    this.#options.subscribe(this.#value as T, (oldValue === UNSET ? undefined : oldValue) as T);
   }
 
   /**
@@ -222,7 +227,7 @@ class MemoizedSignalImp<T> extends ReactiveNode {
    *
    * @returns A string representation of the signal.
    */
-  public override toString(): string {
+  override toString(): string {
     return `[MemoSignal: ${JSON.stringify(this.signal())}]`;
   }
 }

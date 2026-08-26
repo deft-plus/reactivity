@@ -12,35 +12,35 @@
  */
 export abstract class ReactiveNode {
   /** Counter for generating unique IDs for producers and consumers. */
-  private static nextId = 0;
+  static #nextId = 0;
 
   /** The currently active reactive consumer, or `null` if none. */
-  private static activeConsumer: ReactiveNode | null = null;
+  static #activeConsumer: ReactiveNode | null = null;
 
   /** Whether change notifications are currently being propagated. */
-  private static notifying = false;
+  static #notifying = false;
 
   /** Unique identifier for this node. */
-  private readonly id = ReactiveNode.nextId++;
+  readonly #id = ReactiveNode.#nextId++;
 
   /** Weak reference to this node, used in dependencies. */
-  private readonly ref = new WeakRef(this);
+  readonly #ref = new WeakRef(this);
 
   /** Dependencies of this node as a producer. */
-  private readonly producers = new Map<number, Dependency>();
+  readonly #producers = new Map<number, Dependency>();
 
   /** Dependencies of this node as a consumer. */
-  private readonly consumers = new Map<number, Dependency>();
+  readonly #consumers = new Map<number, Dependency>();
 
   /** Version of the consumer's dependencies. */
-  protected trackingVersion = 0;
+  trackingVersion = 0;
 
   /** Version of the producer's value. */
-  protected valueVersion = 0;
+  valueVersion = 0;
 
   /** Whether this consumer has any producers. */
-  protected get hasProducers(): boolean {
-    return this.producers.size > 0;
+  get hasProducers(): boolean {
+    return this.#producers.size > 0;
   }
 
   /**
@@ -50,35 +50,39 @@ export abstract class ReactiveNode {
    * @returns The previous reactive consumer ({@link ReactiveNode}) or `null` if none.
    * @internal
    */
-  public static setActiveConsumer(consumer: ReactiveNode | null): ReactiveNode | null {
-    const previous = ReactiveNode.activeConsumer;
-    ReactiveNode.activeConsumer = consumer;
+  static setActiveConsumer(consumer: ReactiveNode | null): ReactiveNode | null {
+    const previous = ReactiveNode.#activeConsumer;
+    ReactiveNode.#activeConsumer = consumer;
     return previous;
   }
 
   /** Called when a dependency may have changed. */
-  protected onDependencyChange(): void {}
+  onDependencyChange(): void {}
 
   /** Called when a consumer checks if the producer's value has changed. */
-  protected onProducerMayChanged(): void {}
+  onProducerMayChanged(): void {}
 
   /**
    * Checks if any of this node's dependencies have actually changed.
    *
    * @returns `true` if any dependencies have changed, `false` otherwise.
    */
-  protected haveDependenciesChanged(): boolean {
-    for (const [producerId, dependency] of this.producers) {
+  haveDependenciesChanged(): boolean {
+    for (const [producerId, dependency] of this.#producers) {
       const producer = dependency.producerRef.deref();
 
       if (producer === undefined || dependency.consumerVersion !== this.trackingVersion) {
         // Dependency is stale; remove it.
-        this.producers.delete(producerId);
-        producer?.consumers.delete(this.id);
+        this.#producers.delete(producerId);
+        // deno-coverage-ignore-start -- WeakRef collection cannot be tested deterministically.
+        if (producer !== undefined) {
+          producer.#consumers.delete(this.#id);
+        }
+        // deno-coverage-ignore-stop
         continue;
       }
 
-      if (producer.haveValueChanged(dependency.producerVersion)) {
+      if (producer.#haveValueChanged(dependency.producerVersion)) {
         return true;
       }
     }
@@ -87,48 +91,52 @@ export abstract class ReactiveNode {
   }
 
   /** Notifies consumers that this producer's value may have changed. */
-  protected notifyConsumers(): void {
-    const wasNotifying = ReactiveNode.notifying;
-    ReactiveNode.notifying = true;
+  notifyConsumers(): void {
+    const wasNotifying = ReactiveNode.#notifying;
+    ReactiveNode.#notifying = true;
     try {
-      for (const [consumerId, dependency] of this.consumers) {
+      for (const [consumerId, dependency] of this.#consumers) {
         const consumer = dependency.consumerRef.deref();
         if (consumer === undefined || consumer.trackingVersion !== dependency.consumerVersion) {
-          this.consumers.delete(consumerId);
-          consumer?.producers.delete(this.id);
+          this.#consumers.delete(consumerId);
+          // deno-coverage-ignore-start -- WeakRef collection cannot be tested deterministically.
+          if (consumer !== undefined) {
+            consumer.#producers.delete(this.#id);
+          }
+          // deno-coverage-ignore-stop
           continue;
         }
 
         consumer.onDependencyChange();
       }
     } finally {
-      ReactiveNode.notifying = wasNotifying;
+      ReactiveNode.#notifying = wasNotifying;
     }
   }
 
   /** Records that this producer node was accessed in the current context. */
-  protected recordAccess(): void {
-    if (ReactiveNode.notifying) {
+  recordAccess(): void {
+    if (ReactiveNode.#notifying) {
       throw new Error('Cannot read signals during notification phase.');
     }
 
-    if (ReactiveNode.activeConsumer === null) {
+    if (ReactiveNode.#activeConsumer === null) {
       return;
     }
 
-    let dependency = ReactiveNode.activeConsumer.producers.get(this.id);
+    let dependency = ReactiveNode.#activeConsumer.#producers.get(this.#id);
     if (dependency === undefined) {
       dependency = {
-        consumerRef: ReactiveNode.activeConsumer.ref,
-        producerRef: this.ref,
+        consumerRef: ReactiveNode.#activeConsumer.#ref,
+        producerRef: this.#ref,
         producerVersion: this.valueVersion,
-        consumerVersion: ReactiveNode.activeConsumer.trackingVersion,
+        consumerVersion: ReactiveNode.#activeConsumer.trackingVersion,
       };
-      ReactiveNode.activeConsumer.producers.set(this.id, dependency);
-      this.consumers.set(ReactiveNode.activeConsumer.id, dependency);
+      ReactiveNode.#activeConsumer.#producers.set(this.#id, dependency);
+      this.#consumers.set(ReactiveNode.#activeConsumer.#id, dependency);
     } else {
       dependency.producerVersion = this.valueVersion;
-      dependency.consumerVersion = ReactiveNode.activeConsumer.trackingVersion;
+      dependency.consumerVersion = ReactiveNode.#activeConsumer.trackingVersion;
     }
   }
 
@@ -138,7 +146,7 @@ export abstract class ReactiveNode {
    * @param lastSeenVersion - The last version of the value seen by the consumer.
    * @returns `true` if the value has changed, `false` otherwise.
    */
-  private haveValueChanged(lastSeenVersion: number): boolean {
+  #haveValueChanged(lastSeenVersion: number): boolean {
     if (this.valueVersion !== lastSeenVersion) {
       return true;
     }
@@ -152,7 +160,7 @@ export abstract class ReactiveNode {
    *
    * @param config - Configuration for logging the change.
    */
-  protected log(config: LogConfig): void {
+  log(config: LogConfig): void {
     const { type, name, newValue, oldValue } = config;
 
     // Rule disabled because this is a debugging method.

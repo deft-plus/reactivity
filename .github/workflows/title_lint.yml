@@ -1,10 +1,11 @@
 name: Lint PR title
 
 on:
-  pull_request_target:
+  pull_request:
     types:
       - opened
       - edited
+      - reopened
       - synchronize
 
 permissions:
@@ -15,29 +16,29 @@ jobs:
     name: Validate PR title
     runs-on: ubuntu-latest
     steps:
-      - uses: amannn/action-semantic-pull-request@v5
+      - name: Validate title format
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          wip: false
-          types: |
-            BREAKING
-            [unstable] BREAKING
-            deprecation
-            [unstable] deprecation
-            feature
-            release
-            fix
-            docs
-            refactor
-            perf
-            test
-            ci
-            chore
-            revert
-          subjectPattern: ^(?![A-Z]).+$
-          subjectPatternError: |
-            The subject "{subject}" found in the pull request title "{title}"
-            didn't match the configured pattern. Please ensure that the subject
-            doesn't start with an uppercase character.
-          requireScope: false
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          pattern='^(\[unstable\] (BREAKING|deprecation)|BREAKING|deprecation|feature|release|fix|docs|refactor|perf|test|ci|chore|revert): [a-z].*$'
+
+          if [[ ! "$PR_TITLE" =~ $pattern ]]; then
+            echo "Invalid pull request title: $PR_TITLE"
+            echo
+            echo "Use one of these formats with a lowercase subject:"
+            echo "  BREAKING: title..."
+            echo "  [unstable] BREAKING: title..."
+            echo "  deprecation: title..."
+            echo "  [unstable] deprecation: title..."
+            echo "  feature: title..."
+            echo "  release: title..."
+            echo "  fix: title..."
+            echo "  docs: title..."
+            echo "  refactor: title..."
+            echo "  perf: title..."
+            echo "  test: title..."
+            echo "  ci: title..."
+            echo "  chore: title..."
+            echo "  revert: title..."
+            exit 1
+          fi

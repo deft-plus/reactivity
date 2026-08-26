@@ -109,40 +109,42 @@ effect.resetEffects = (): void => EffectImpl.resetEffects();
  * @internal
  */
 class EffectImpl extends ReactiveNode {
-  constructor(
-    private callback: EffectCallback,
-  ) {
+  /** Callback executed by this effect. */
+  readonly #callback: EffectCallback;
+
+  constructor(callback: EffectCallback) {
     super();
+    this.#callback = callback;
   }
 
   /** Set of all active effects. */
-  private static activeEffects = new Set<EffectImpl>();
+  static #activeEffects = new Set<EffectImpl>();
 
   /** Set of effects scheduled for execution. */
-  private static executionQueue = new Set<EffectImpl>();
+  static #executionQueue = new Set<EffectImpl>();
 
   /** Promise that resolves when the execution queue is empty. */
-  private static pendingQueue: PromiseWithResolvers<void> | null = null;
+  static #pendingQueue: PromiseWithResolvers<void> | null = null;
 
   /** Property to track if this watch is dirty and needs to be re-scheduled. */
-  private dirty = false;
+  #dirty = false;
 
   /** Property to track the current tracking version. */
-  private cleanupFn = NOOP_CLEANUP;
+  #cleanupFn = NOOP_CLEANUP;
 
   /** Whether this effect has already been destroyed. */
-  private destroyed = false;
+  #destroyed = false;
 
   /** Stop all active effects. */
-  public static resetEffects(): void {
-    for (const effect of EffectImpl.activeEffects) {
-      effect.destroy();
+  static resetEffects(): void {
+    for (const effect of EffectImpl.#activeEffects) {
+      effect.#destroy();
     }
   }
 
   /** Called when a dependency may have changed. */
-  protected override onDependencyChange(): void {
-    this.notify();
+  override onDependencyChange(): void {
+    this.#notify();
   }
 
   /**
@@ -150,51 +152,51 @@ class EffectImpl extends ReactiveNode {
    *
    * @returns A reference to the effect ({@link EffectRef}).
    */
-  public effect(initial = false): EffectRef {
-    EffectImpl.activeEffects.add(this);
+  effect(initial = false): EffectRef {
+    EffectImpl.#activeEffects.add(this);
 
     if (initial) {
-      this.run();
+      this.#run();
     } else {
       // Schedule the effect to run.
-      this.notify();
+      this.#notify();
     }
 
     return {
-      destroy: () => this.destroy(),
+      destroy: () => this.#destroy(),
       [Symbol.dispose]: () => {
-        this.destroy();
+        this.#destroy();
       },
     };
   }
 
   /** Destroy this effect and run its cleanup function once. */
-  private destroy(): void {
-    if (this.destroyed) {
+  #destroy(): void {
+    if (this.#destroyed) {
       return;
     }
 
-    this.destroyed = true;
-    EffectImpl.activeEffects.delete(this);
-    EffectImpl.executionQueue.delete(this);
-    this.cleanup();
+    this.#destroyed = true;
+    EffectImpl.#activeEffects.delete(this);
+    EffectImpl.#executionQueue.delete(this);
+    this.#cleanup();
   }
 
   /** Notify that this watch needs to be re-scheduled. */
-  private notify(): void {
-    if (!this.dirty) {
-      this.schedule();
+  #notify(): void {
+    if (!this.#dirty) {
+      this.#schedule();
     }
 
-    this.dirty = true;
+    this.#dirty = true;
   }
 
   /**
    * Executes the reactive expression within the context of this `Watch` instance. Should be called
    * by the scheduling function when `Watch.notify()` is triggered.
    */
-  private run(): void {
-    this.dirty = false;
+  #run(): void {
+    this.#dirty = false;
 
     if (this.trackingVersion !== 0 && !this.haveDependenciesChanged()) {
       return;
@@ -204,43 +206,43 @@ class EffectImpl extends ReactiveNode {
     this.trackingVersion++;
 
     try {
-      this.cleanupFn();
-      this.cleanupFn = this.callback() ?? NOOP_CLEANUP;
+      this.#cleanupFn();
+      this.#cleanupFn = this.#callback() ?? NOOP_CLEANUP;
     } finally {
       ReactiveNode.setActiveConsumer(previousConsumer);
     }
   }
 
   /** Run the cleanup function. */
-  private cleanup(): void {
-    const cleanupFn = this.cleanupFn;
-    this.cleanupFn = NOOP_CLEANUP;
+  #cleanup(): void {
+    const cleanupFn = this.#cleanupFn;
+    this.#cleanupFn = NOOP_CLEANUP;
     cleanupFn();
   }
 
   /** Queue an effect for execution. */
-  private schedule(): void {
-    if (EffectImpl.executionQueue.has(this) || !EffectImpl.activeEffects.has(this)) {
+  #schedule(): void {
+    if (EffectImpl.#executionQueue.has(this) || !EffectImpl.#activeEffects.has(this)) {
       return;
     }
 
-    EffectImpl.executionQueue.add(this);
+    EffectImpl.#executionQueue.add(this);
 
-    if (EffectImpl.pendingQueue === null) {
-      Promise.resolve().then(this.executeQueue);
-      EffectImpl.pendingQueue = Promise.withResolvers();
+    if (EffectImpl.#pendingQueue === null) {
+      Promise.resolve().then(this.#executeQueue);
+      EffectImpl.#pendingQueue = Promise.withResolvers();
     }
   }
 
   /** Execute all queued effects. */
-  private executeQueue(): void {
-    for (const watch of EffectImpl.executionQueue) {
-      EffectImpl.executionQueue.delete(watch);
-      watch.run();
+  #executeQueue(): void {
+    for (const watch of EffectImpl.#executionQueue) {
+      EffectImpl.#executionQueue.delete(watch);
+      watch.#run();
     }
 
-    EffectImpl.pendingQueue?.resolve();
-    EffectImpl.pendingQueue = null;
+    EffectImpl.#pendingQueue?.resolve();
+    EffectImpl.#pendingQueue = null;
   }
 }
 
